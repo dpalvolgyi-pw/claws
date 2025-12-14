@@ -2,7 +2,7 @@
 
 A terminal UI for AWS resource management 👮
 
-![Go Version](https://img.shields.io/badge/Go-1.23+-00ADD8?style=flat&logo=go)
+![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)
 ![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
 
 ## Features
@@ -263,7 +263,7 @@ See [docs/architecture.md](docs/architecture.md) for details.
 
 ### Prerequisites
 
-- Go 1.23+
+- Go 1.25+
 - [Task](https://taskfile.dev/) (optional, for task runner)
 
 ### Commands
