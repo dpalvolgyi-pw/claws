@@ -49,6 +49,8 @@ task build
 
 # Read-only mode (disables destructive actions)
 ./claws --read-only
+# or
+CLAWS_READ_ONLY=1 ./claws
 
 # Enable debug logging to file
 ./claws -l debug.log
