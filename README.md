@@ -10,6 +10,14 @@ A terminal UI for AWS resource management 👮
 
 ![claws demo](demo.gif)
 
+## Supported Platforms
+
+| OS | Architecture |
+|-----|-------------|
+| macOS | Intel, Apple Silicon |
+| Linux | x86_64, ARM64 |
+| Windows | x86_64 |
+
 ## Features
 
 - **Interactive TUI** - Navigate AWS resources with vim-style keybindings
@@ -51,6 +59,11 @@ tar xzf claws.tar.gz && sudo mv claws /usr/local/bin/
 # Linux (ARM64)
 curl -Lo claws.tar.gz https://github.com/clawscli/claws/releases/latest/download/claws-linux-arm64.tar.gz
 tar xzf claws.tar.gz && sudo mv claws /usr/local/bin/
+
+# Windows (PowerShell)
+Invoke-WebRequest -Uri https://github.com/clawscli/claws/releases/latest/download/claws-windows-amd64.zip -OutFile claws.zip
+Expand-Archive claws.zip -DestinationPath .
+# Add to PATH or move to desired location
 ```
 
 ### Go Install
