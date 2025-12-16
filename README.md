@@ -21,18 +21,25 @@ A terminal UI for AWS resource management 👮
 
 ## Installation
 
+### Homebrew (macOS/Linux)
+
+```bash
+brew tap clawscli/tap
+brew install --cask claws
+```
+
+### Go Install
+
+```bash
+go install github.com/clawscli/claws/cmd/claws@latest
+```
+
 ### From Source
 
 ```bash
 git clone https://github.com/clawscli/claws.git
 cd claws
 go build -o claws ./cmd/claws
-```
-
-### Using Task
-
-```bash
-task build
 ```
 
 ## Quick Start
