@@ -20,7 +20,7 @@ type BusDAO struct {
 func NewBusDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new eventbridge/buses dao: %w", err)
 	}
 	return &BusDAO{
 		BaseDAO: dao.NewBaseDAO("eventbridge", "buses"),

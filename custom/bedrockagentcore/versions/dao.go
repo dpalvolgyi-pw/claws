@@ -21,7 +21,7 @@ type VersionDAO struct {
 func NewVersionDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new bedrockagentcore/versions dao: %w", err)
 	}
 	return &VersionDAO{
 		BaseDAO: dao.NewBaseDAO("bedrock-agentcore", "versions"),

@@ -21,7 +21,7 @@ type VpcEndpointDAO struct {
 func NewVpcEndpointDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new vpc/vpcendpoints dao: %w", err)
 	}
 	return &VpcEndpointDAO{
 		BaseDAO: dao.NewBaseDAO("ec2", "vpc-endpoints"),

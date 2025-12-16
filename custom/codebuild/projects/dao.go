@@ -21,7 +21,7 @@ type ProjectDAO struct {
 func NewProjectDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new codebuild/projects dao: %w", err)
 	}
 	return &ProjectDAO{
 		BaseDAO: dao.NewBaseDAO("codebuild", "projects"),

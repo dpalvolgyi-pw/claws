@@ -21,7 +21,7 @@ type TransitGatewayDAO struct {
 func NewTransitGatewayDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new vpc/transitgateways dao: %w", err)
 	}
 	return &TransitGatewayDAO{
 		BaseDAO: dao.NewBaseDAO("ec2", "transit-gateways"),

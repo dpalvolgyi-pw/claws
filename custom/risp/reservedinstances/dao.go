@@ -21,7 +21,7 @@ type ReservedInstanceDAO struct {
 func NewReservedInstanceDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new risp/reservedinstances dao: %w", err)
 	}
 	return &ReservedInstanceDAO{
 		BaseDAO: dao.NewBaseDAO("risp", "reserved-instances"),

@@ -20,7 +20,7 @@ type OUDAO struct {
 func NewOUDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new organizations/ous dao: %w", err)
 	}
 	return &OUDAO{
 		BaseDAO: dao.NewBaseDAO("organizations", "ous"),

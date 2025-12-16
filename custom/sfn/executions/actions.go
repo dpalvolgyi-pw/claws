@@ -24,11 +24,11 @@ func init() {
 	})
 
 	// Register executor
-	action.RegisterExecutor("sfn", "executions", ExecuteExecutionAction)
+	action.RegisterExecutor("sfn", "executions", executeExecutionAction)
 }
 
-// ExecuteExecutionAction executes an action on a Step Functions execution
-func ExecuteExecutionAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
+// executeExecutionAction executes an action on a Step Functions execution
+func executeExecutionAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
 	switch act.Operation {
 	case "StopExecution":
 		return executeStopExecution(ctx, resource)

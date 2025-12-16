@@ -21,7 +21,7 @@ type JobRunDAO struct {
 func NewJobRunDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new glue/jobruns dao: %w", err)
 	}
 	return &JobRunDAO{
 		BaseDAO: dao.NewBaseDAO("glue", "job-runs"),

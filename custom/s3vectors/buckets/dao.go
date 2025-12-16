@@ -20,7 +20,7 @@ type VectorBucketDAO struct {
 func NewVectorBucketDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new s3vectors/buckets dao: %w", err)
 	}
 	return &VectorBucketDAO{
 		BaseDAO: dao.NewBaseDAO("s3vectors", "buckets"),

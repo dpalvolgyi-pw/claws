@@ -21,7 +21,7 @@ type DistributionDAO struct {
 func NewDistributionDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new cloudfront/distributions dao: %w", err)
 	}
 	return &DistributionDAO{
 		BaseDAO: dao.NewBaseDAO("cloudfront", "distributions"),

@@ -21,7 +21,7 @@ type WorkgroupDAO struct {
 func NewWorkgroupDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new athena/workgroups dao: %w", err)
 	}
 	return &WorkgroupDAO{
 		BaseDAO: dao.NewBaseDAO("athena", "workgroups"),

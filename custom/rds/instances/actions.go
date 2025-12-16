@@ -49,11 +49,11 @@ func init() {
 	})
 
 	// Register executor
-	action.RegisterExecutor("rds", "instances", ExecuteInstanceAction)
+	action.RegisterExecutor("rds", "instances", executeInstanceAction)
 }
 
-// ExecuteInstanceAction executes an action on an RDS instance
-func ExecuteInstanceAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
+// executeInstanceAction executes an action on an RDS instance
+func executeInstanceAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
 	switch act.Operation {
 	case "StartDBInstance":
 		return executeStartInstance(ctx, resource)

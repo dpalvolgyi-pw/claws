@@ -20,7 +20,7 @@ type LogStreamDAO struct {
 func NewLogStreamDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new cloudwatch/logstreams dao: %w", err)
 	}
 	return &LogStreamDAO{
 		BaseDAO: dao.NewBaseDAO("cloudwatch", "log-streams"),

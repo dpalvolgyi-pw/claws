@@ -20,7 +20,7 @@ type SnapshotDAO struct {
 func NewSnapshotDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new ec2/snapshots dao: %w", err)
 	}
 	return &SnapshotDAO{
 		BaseDAO: dao.NewBaseDAO("ec2", "snapshots"),

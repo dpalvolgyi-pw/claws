@@ -40,11 +40,11 @@ func init() {
 	})
 
 	// Register executor
-	action.RegisterExecutor("eventbridge", "rules", ExecuteRuleAction)
+	action.RegisterExecutor("eventbridge", "rules", executeRuleAction)
 }
 
-// ExecuteRuleAction executes an action on an EventBridge rule
-func ExecuteRuleAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
+// executeRuleAction executes an action on an EventBridge rule
+func executeRuleAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
 	switch act.Operation {
 	case "EnableRule":
 		return executeEnableRule(ctx, resource)

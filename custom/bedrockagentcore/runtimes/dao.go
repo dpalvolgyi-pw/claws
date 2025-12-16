@@ -21,7 +21,7 @@ type RuntimeDAO struct {
 func NewRuntimeDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new bedrockagentcore/runtimes dao: %w", err)
 	}
 	return &RuntimeDAO{
 		BaseDAO: dao.NewBaseDAO("bedrock-agentcore", "runtimes"),

@@ -20,7 +20,7 @@ type SecurityGroupDAO struct {
 func NewSecurityGroupDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new ec2/securitygroups dao: %w", err)
 	}
 	return &SecurityGroupDAO{
 		BaseDAO: dao.NewBaseDAO("ec2", "security-groups"),

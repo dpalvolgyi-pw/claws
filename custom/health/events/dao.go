@@ -22,7 +22,7 @@ type EventDAO struct {
 func NewEventDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new health/events dao: %w", err)
 	}
 	// Health API requires us-east-1 region
 	return &EventDAO{

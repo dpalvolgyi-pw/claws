@@ -20,7 +20,7 @@ type ConnectionDAO struct {
 func NewConnectionDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new directconnect/connections dao: %w", err)
 	}
 	return &ConnectionDAO{
 		BaseDAO: dao.NewBaseDAO("directconnect", "connections"),

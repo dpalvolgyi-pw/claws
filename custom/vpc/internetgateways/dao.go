@@ -20,7 +20,7 @@ type InternetGatewayDAO struct {
 func NewInternetGatewayDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new vpc/internetgateways dao: %w", err)
 	}
 	return &InternetGatewayDAO{
 		BaseDAO: dao.NewBaseDAO("vpc", "internet-gateways"),

@@ -21,7 +21,7 @@ type RecordSetDAO struct {
 func NewRecordSetDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new route53/recordsets dao: %w", err)
 	}
 	return &RecordSetDAO{
 		BaseDAO: dao.NewBaseDAO("route53", "record-sets"),

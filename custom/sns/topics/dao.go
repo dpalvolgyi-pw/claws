@@ -22,7 +22,7 @@ type TopicDAO struct {
 func NewTopicDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new sns/topics dao: %w", err)
 	}
 	return &TopicDAO{
 		BaseDAO: dao.NewBaseDAO("sns", "topics"),

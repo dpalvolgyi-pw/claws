@@ -21,7 +21,7 @@ type CertificateDAO struct {
 func NewCertificateDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new acm/certificates dao: %w", err)
 	}
 	return &CertificateDAO{
 		BaseDAO: dao.NewBaseDAO("acm", "certificates"),

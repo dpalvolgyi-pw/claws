@@ -21,7 +21,7 @@ type LocationDAO struct {
 func NewLocationDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new datasync/locations dao: %w", err)
 	}
 	return &LocationDAO{
 		BaseDAO: dao.NewBaseDAO("datasync", "locations"),

@@ -20,7 +20,7 @@ type DomainDAO struct {
 func NewDomainDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new opensearch/domains dao: %w", err)
 	}
 	return &DomainDAO{
 		BaseDAO: dao.NewBaseDAO("opensearch", "domains"),

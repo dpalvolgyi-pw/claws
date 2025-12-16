@@ -21,7 +21,7 @@ type AgentDAO struct {
 func NewAgentDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new bedrockagent/agents dao: %w", err)
 	}
 	return &AgentDAO{
 		BaseDAO: dao.NewBaseDAO("bedrock-agent", "agents"),

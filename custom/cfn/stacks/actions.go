@@ -52,11 +52,11 @@ func init() {
 	})
 
 	// Register executor for this resource
-	action.RegisterExecutor("cloudformation", "stacks", ExecuteStackAction)
+	action.RegisterExecutor("cloudformation", "stacks", executeStackAction)
 }
 
-// ExecuteStackAction executes an action on a Stack resource
-func ExecuteStackAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
+// executeStackAction executes an action on a Stack resource
+func executeStackAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
 	switch act.Operation {
 	case "DeleteStack":
 		return executeDeleteStack(ctx, resource)

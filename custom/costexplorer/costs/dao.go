@@ -21,7 +21,7 @@ type CostDAO struct {
 func NewCostDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new costexplorer/costs dao: %w", err)
 	}
 	return &CostDAO{
 		BaseDAO: dao.NewBaseDAO("cost-explorer", "costs"),

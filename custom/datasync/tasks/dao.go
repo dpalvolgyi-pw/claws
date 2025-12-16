@@ -22,7 +22,7 @@ type TaskDAO struct {
 func NewTaskDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new datasync/tasks dao: %w", err)
 	}
 	return &TaskDAO{
 		BaseDAO: dao.NewBaseDAO("datasync", "tasks"),

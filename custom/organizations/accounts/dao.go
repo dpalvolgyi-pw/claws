@@ -21,7 +21,7 @@ type AccountDAO struct {
 func NewAccountDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new organizations/accounts dao: %w", err)
 	}
 	return &AccountDAO{
 		BaseDAO: dao.NewBaseDAO("organizations", "accounts"),

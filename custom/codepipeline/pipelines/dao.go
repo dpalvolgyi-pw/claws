@@ -21,7 +21,7 @@ type PipelineDAO struct {
 func NewPipelineDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new codepipeline/pipelines dao: %w", err)
 	}
 	return &PipelineDAO{
 		BaseDAO: dao.NewBaseDAO("codepipeline", "pipelines"),

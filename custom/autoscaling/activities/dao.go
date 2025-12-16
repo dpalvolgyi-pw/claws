@@ -21,7 +21,7 @@ type ActivityDAO struct {
 func NewActivityDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new autoscaling/activities dao: %w", err)
 	}
 	return &ActivityDAO{
 		BaseDAO: dao.NewBaseDAO("autoscaling", "activities"),

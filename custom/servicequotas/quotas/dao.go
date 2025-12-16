@@ -129,7 +129,7 @@ type QuotaDAO struct {
 func NewQuotaDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new servicequotas/quotas dao: %w", err)
 	}
 	return &QuotaDAO{
 		BaseDAO: dao.NewBaseDAO("service-quotas", "quotas"),

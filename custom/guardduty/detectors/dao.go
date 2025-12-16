@@ -21,7 +21,7 @@ type DetectorDAO struct {
 func NewDetectorDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new guardduty/detectors dao: %w", err)
 	}
 	return &DetectorDAO{
 		BaseDAO: dao.NewBaseDAO("guardduty", "detectors"),

@@ -20,7 +20,7 @@ type InstanceDAO struct {
 func NewInstanceDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new rds/instances dao: %w", err)
 	}
 	return &InstanceDAO{
 		BaseDAO: dao.NewBaseDAO("rds", "instances"),

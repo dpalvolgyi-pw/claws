@@ -22,7 +22,7 @@ type SavingsPlanDAO struct {
 func NewSavingsPlanDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new risp/savingsplans dao: %w", err)
 	}
 	return &SavingsPlanDAO{
 		BaseDAO: dao.NewBaseDAO("risp", "savings-plans"),

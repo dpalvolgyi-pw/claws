@@ -20,7 +20,7 @@ type RouteTableDAO struct {
 func NewRouteTableDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new vpc/routetables dao: %w", err)
 	}
 	return &RouteTableDAO{
 		BaseDAO: dao.NewBaseDAO("vpc", "route-tables"),

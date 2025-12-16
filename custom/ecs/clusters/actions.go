@@ -24,11 +24,11 @@ func init() {
 	})
 
 	// Register executor
-	action.RegisterExecutor("ecs", "clusters", ExecuteClusterAction)
+	action.RegisterExecutor("ecs", "clusters", executeClusterAction)
 }
 
-// ExecuteClusterAction executes an action on an ECS cluster
-func ExecuteClusterAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
+// executeClusterAction executes an action on an ECS cluster
+func executeClusterAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
 	switch act.Operation {
 	case "DeleteCluster":
 		return executeDeleteCluster(ctx, resource)

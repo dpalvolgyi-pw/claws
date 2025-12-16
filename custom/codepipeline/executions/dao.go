@@ -21,7 +21,7 @@ type ExecutionDAO struct {
 func NewExecutionDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new codepipeline/executions dao: %w", err)
 	}
 	return &ExecutionDAO{
 		BaseDAO: dao.NewBaseDAO("codepipeline", "executions"),

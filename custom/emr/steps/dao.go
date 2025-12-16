@@ -20,7 +20,7 @@ type StepDAO struct {
 func NewStepDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new emr/steps dao: %w", err)
 	}
 	return &StepDAO{
 		BaseDAO: dao.NewBaseDAO("emr", "steps"),

@@ -21,7 +21,7 @@ type LogGroupDAO struct {
 func NewLogGroupDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new cloudwatch/loggroups dao: %w", err)
 	}
 	return &LogGroupDAO{
 		BaseDAO: dao.NewBaseDAO("cloudwatch", "log-groups"),

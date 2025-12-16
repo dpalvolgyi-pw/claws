@@ -57,11 +57,11 @@ func init() {
 	})
 
 	// Register executor
-	action.RegisterExecutor("ecs", "services", ExecuteServiceAction)
+	action.RegisterExecutor("ecs", "services", executeServiceAction)
 }
 
-// ExecuteServiceAction executes an action on an ECS service
-func ExecuteServiceAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
+// executeServiceAction executes an action on an ECS service
+func executeServiceAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
 	switch act.Operation {
 	case "ScaleUp":
 		return executeScale(ctx, resource, 1)

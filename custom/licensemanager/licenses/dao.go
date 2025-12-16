@@ -21,7 +21,7 @@ type LicenseDAO struct {
 func NewLicenseDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new licensemanager/licenses dao: %w", err)
 	}
 	return &LicenseDAO{
 		BaseDAO: dao.NewBaseDAO("license-manager", "licenses"),

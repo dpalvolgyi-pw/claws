@@ -41,11 +41,11 @@ func init() {
 	})
 
 	// Register executor
-	action.RegisterExecutor("sqs", "queues", ExecuteQueueAction)
+	action.RegisterExecutor("sqs", "queues", executeQueueAction)
 }
 
-// ExecuteQueueAction executes an action on an SQS queue
-func ExecuteQueueAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
+// executeQueueAction executes an action on an SQS queue
+func executeQueueAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
 	switch act.Operation {
 	case "PurgeQueue":
 		return executePurgeQueue(ctx, resource)

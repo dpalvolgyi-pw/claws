@@ -21,7 +21,7 @@ type FindingDAO struct {
 func NewFindingDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new inspector2/findings dao: %w", err)
 	}
 	return &FindingDAO{
 		BaseDAO: dao.NewBaseDAO("inspector2", "findings"),

@@ -21,7 +21,7 @@ type GraphDAO struct {
 func NewGraphDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new detective/graphs dao: %w", err)
 	}
 	return &GraphDAO{
 		BaseDAO: dao.NewBaseDAO("detective", "graphs"),

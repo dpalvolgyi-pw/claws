@@ -21,7 +21,7 @@ type ModelDAO struct {
 func NewModelDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new sagemaker/models dao: %w", err)
 	}
 	return &ModelDAO{
 		BaseDAO: dao.NewBaseDAO("sagemaker", "models"),

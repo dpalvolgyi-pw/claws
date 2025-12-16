@@ -20,7 +20,7 @@ type TrailDAO struct {
 func NewTrailDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new cloudtrail/trails dao: %w", err)
 	}
 	return &TrailDAO{
 		BaseDAO: dao.NewBaseDAO("cloudtrail", "trails"),

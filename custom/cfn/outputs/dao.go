@@ -20,7 +20,7 @@ type OutputDAO struct {
 func NewOutputDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new cfn/outputs dao: %w", err)
 	}
 	return &OutputDAO{
 		BaseDAO: dao.NewBaseDAO("cloudformation", "outputs"),

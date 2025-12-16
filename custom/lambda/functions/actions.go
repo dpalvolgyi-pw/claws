@@ -42,11 +42,11 @@ func init() {
 	})
 
 	// Register executor
-	action.RegisterExecutor("lambda", "functions", ExecuteFunctionAction)
+	action.RegisterExecutor("lambda", "functions", executeFunctionAction)
 }
 
-// ExecuteFunctionAction executes an action on a Lambda function
-func ExecuteFunctionAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
+// executeFunctionAction executes an action on a Lambda function
+func executeFunctionAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
 	switch act.Operation {
 	case "InvokeFunction":
 		return executeInvoke(ctx, resource, false)

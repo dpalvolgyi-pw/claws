@@ -22,7 +22,7 @@ type BucketDAO struct {
 func NewBucketDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new s3/buckets dao: %w", err)
 	}
 	return &BucketDAO{
 		BaseDAO: dao.NewBaseDAO("s3", "buckets"),

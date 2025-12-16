@@ -21,7 +21,7 @@ type EndpointDAO struct {
 func NewEndpointDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new bedrockagentcore/endpoints dao: %w", err)
 	}
 	return &EndpointDAO{
 		BaseDAO: dao.NewBaseDAO("bedrock-agentcore", "endpoints"),

@@ -21,7 +21,7 @@ type AnalyzerDAO struct {
 func NewAnalyzerDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new accessanalyzer/analyzers dao: %w", err)
 	}
 	return &AnalyzerDAO{
 		BaseDAO: dao.NewBaseDAO("accessanalyzer", "analyzers"),

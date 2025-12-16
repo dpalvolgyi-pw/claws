@@ -21,7 +21,7 @@ type GuardrailDAO struct {
 func NewGuardrailDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new bedrock/guardrails dao: %w", err)
 	}
 	return &GuardrailDAO{
 		BaseDAO: dao.NewBaseDAO("bedrock", "guardrails"),

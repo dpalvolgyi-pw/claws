@@ -20,7 +20,7 @@ type VPCDAO struct {
 func NewVPCDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new vpc/vpcs dao: %w", err)
 	}
 	return &VPCDAO{
 		BaseDAO: dao.NewBaseDAO("vpc", "vpcs"),

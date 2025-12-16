@@ -21,7 +21,7 @@ type StateMachineDAO struct {
 func NewStateMachineDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new sfn/statemachines dao: %w", err)
 	}
 	return &StateMachineDAO{
 		BaseDAO: dao.NewBaseDAO("sfn", "state-machines"),

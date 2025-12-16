@@ -21,7 +21,7 @@ type OperationDAO struct {
 func NewOperationDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new apprunner/operations dao: %w", err)
 	}
 	return &OperationDAO{
 		BaseDAO: dao.NewBaseDAO("apprunner", "operations"),

@@ -37,11 +37,11 @@ func init() {
 	})
 
 	// Register executor
-	action.RegisterExecutor("secretsmanager", "secrets", ExecuteSecretAction)
+	action.RegisterExecutor("secretsmanager", "secrets", executeSecretAction)
 }
 
-// ExecuteSecretAction executes an action on a secret
-func ExecuteSecretAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
+// executeSecretAction executes an action on a secret
+func executeSecretAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
 	switch act.Operation {
 	case "DeleteSecret":
 		return executeDeleteSecret(ctx, resource)

@@ -57,11 +57,11 @@ func init() {
 	})
 
 	// Register executor
-	action.RegisterExecutor("dynamodb", "tables", ExecuteTableAction)
+	action.RegisterExecutor("dynamodb", "tables", executeTableAction)
 }
 
-// ExecuteTableAction executes an action on a DynamoDB table
-func ExecuteTableAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
+// executeTableAction executes an action on a DynamoDB table
+func executeTableAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
 	switch act.Operation {
 	case "ScaleUpRCU":
 		return executeScaleCapacity(ctx, resource, true, false)

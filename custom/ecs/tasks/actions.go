@@ -32,11 +32,11 @@ func init() {
 	})
 
 	// Register executor
-	action.RegisterExecutor("ecs", "tasks", ExecuteTaskAction)
+	action.RegisterExecutor("ecs", "tasks", executeTaskAction)
 }
 
-// ExecuteTaskAction executes an action on an ECS task
-func ExecuteTaskAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
+// executeTaskAction executes an action on an ECS task
+func executeTaskAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
 	switch act.Operation {
 	case "StopTask":
 		return executeStopTask(ctx, resource)

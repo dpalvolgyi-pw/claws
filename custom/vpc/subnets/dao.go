@@ -20,7 +20,7 @@ type SubnetDAO struct {
 func NewSubnetDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new vpc/subnets dao: %w", err)
 	}
 	return &SubnetDAO{
 		BaseDAO: dao.NewBaseDAO("vpc", "subnets"),

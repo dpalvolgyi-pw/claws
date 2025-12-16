@@ -48,11 +48,11 @@ func init() {
 	})
 
 	// Register executor
-	action.RegisterExecutor("cloudwatch", "log-streams", ExecuteLogStreamAction)
+	action.RegisterExecutor("cloudwatch", "log-streams", executeLogStreamAction)
 }
 
-// ExecuteLogStreamAction executes an action on a CloudWatch Log Stream
-func ExecuteLogStreamAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
+// executeLogStreamAction executes an action on a CloudWatch Log Stream
+func executeLogStreamAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
 	switch act.Operation {
 	case "DeleteLogStream":
 		return executeDeleteLogStream(ctx, resource)

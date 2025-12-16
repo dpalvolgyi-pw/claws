@@ -21,7 +21,7 @@ type QueryExecutionDAO struct {
 func NewQueryExecutionDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new athena/queryexecutions dao: %w", err)
 	}
 	return &QueryExecutionDAO{
 		BaseDAO: dao.NewBaseDAO("athena", "query-executions"),

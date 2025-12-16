@@ -22,7 +22,7 @@ type InferenceProfileDAO struct {
 func NewInferenceProfileDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new bedrock/inferenceprofiles dao: %w", err)
 	}
 	return &InferenceProfileDAO{
 		BaseDAO: dao.NewBaseDAO("bedrock", "inference-profiles"),

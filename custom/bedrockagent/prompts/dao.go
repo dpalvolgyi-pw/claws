@@ -21,7 +21,7 @@ type PromptDAO struct {
 func NewPromptDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new bedrockagent/prompts dao: %w", err)
 	}
 	return &PromptDAO{
 		BaseDAO: dao.NewBaseDAO("bedrock-agent", "prompts"),

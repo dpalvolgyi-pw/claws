@@ -21,7 +21,7 @@ type BuildDAO struct {
 func NewBuildDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new codebuild/builds dao: %w", err)
 	}
 	return &BuildDAO{
 		BaseDAO: dao.NewBaseDAO("codebuild", "builds"),

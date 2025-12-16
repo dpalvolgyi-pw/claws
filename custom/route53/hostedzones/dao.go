@@ -21,7 +21,7 @@ type HostedZoneDAO struct {
 func NewHostedZoneDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new route53/hostedzones dao: %w", err)
 	}
 	return &HostedZoneDAO{
 		BaseDAO: dao.NewBaseDAO("route53", "hosted-zones"),

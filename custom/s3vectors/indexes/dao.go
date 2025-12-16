@@ -20,7 +20,7 @@ type VectorIndexDAO struct {
 func NewVectorIndexDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new s3vectors/indexes dao: %w", err)
 	}
 	return &VectorIndexDAO{
 		BaseDAO: dao.NewBaseDAO("s3vectors", "indexes"),

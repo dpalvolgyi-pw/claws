@@ -21,7 +21,7 @@ type RuleDAO struct {
 func NewRuleDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new eventbridge/rules dao: %w", err)
 	}
 	return &RuleDAO{
 		BaseDAO: dao.NewBaseDAO("eventbridge", "rules"),

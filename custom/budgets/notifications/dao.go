@@ -22,7 +22,7 @@ type NotificationDAO struct {
 func NewNotificationDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new budgets/notifications dao: %w", err)
 	}
 	return &NotificationDAO{
 		BaseDAO:   dao.NewBaseDAO("budgets", "notifications"),

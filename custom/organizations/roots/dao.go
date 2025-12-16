@@ -20,7 +20,7 @@ type RootDAO struct {
 func NewRootDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new organizations/roots dao: %w", err)
 	}
 	return &RootDAO{
 		BaseDAO: dao.NewBaseDAO("organizations", "roots"),

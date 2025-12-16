@@ -21,7 +21,7 @@ type ImageDAO struct {
 func NewImageDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new ecr/images dao: %w", err)
 	}
 	return &ImageDAO{
 		BaseDAO: dao.NewBaseDAO("ecr", "images"),

@@ -20,7 +20,7 @@ type ServerDAO struct {
 func NewServerDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new transfer/servers dao: %w", err)
 	}
 	return &ServerDAO{
 		BaseDAO: dao.NewBaseDAO("transfer", "servers"),

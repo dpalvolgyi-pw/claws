@@ -24,7 +24,7 @@ type EventDAO struct {
 func NewEventDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new cloudtrail/events dao: %w", err)
 	}
 	return &EventDAO{
 		BaseDAO: dao.NewBaseDAO("cloudtrail", "events"),

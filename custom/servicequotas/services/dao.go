@@ -75,7 +75,7 @@ type ServiceDAO struct {
 func NewServiceDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new servicequotas/services dao: %w", err)
 	}
 	return &ServiceDAO{
 		BaseDAO: dao.NewBaseDAO("service-quotas", "services"),

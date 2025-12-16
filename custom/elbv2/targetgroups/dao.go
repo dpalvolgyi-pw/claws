@@ -20,7 +20,7 @@ type TargetGroupDAO struct {
 func NewTargetGroupDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new elbv2/targetgroups dao: %w", err)
 	}
 	return &TargetGroupDAO{
 		BaseDAO: dao.NewBaseDAO("elbv2", "target-groups"),

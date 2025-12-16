@@ -22,7 +22,7 @@ type QueueDAO struct {
 func NewQueueDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new sqs/queues dao: %w", err)
 	}
 	return &QueueDAO{
 		BaseDAO: dao.NewBaseDAO("sqs", "queues"),

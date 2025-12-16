@@ -21,7 +21,7 @@ type FoundationModelDAO struct {
 func NewFoundationModelDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new bedrock/foundationmodels dao: %w", err)
 	}
 	return &FoundationModelDAO{
 		BaseDAO: dao.NewBaseDAO("bedrock", "foundation-models"),

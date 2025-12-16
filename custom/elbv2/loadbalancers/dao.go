@@ -21,7 +21,7 @@ type LoadBalancerDAO struct {
 func NewLoadBalancerDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new elbv2/loadbalancers dao: %w", err)
 	}
 	return &LoadBalancerDAO{
 		BaseDAO: dao.NewBaseDAO("elbv2", "load-balancers"),

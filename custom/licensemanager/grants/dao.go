@@ -21,7 +21,7 @@ type GrantDAO struct {
 func NewGrantDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new licensemanager/grants dao: %w", err)
 	}
 	return &GrantDAO{
 		BaseDAO: dao.NewBaseDAO("license-manager", "grants"),

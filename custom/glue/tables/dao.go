@@ -21,7 +21,7 @@ type TableDAO struct {
 func NewTableDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new glue/tables dao: %w", err)
 	}
 	return &TableDAO{
 		BaseDAO: dao.NewBaseDAO("glue", "tables"),

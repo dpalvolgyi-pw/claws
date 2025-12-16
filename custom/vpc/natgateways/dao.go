@@ -20,7 +20,7 @@ type NatGatewayDAO struct {
 func NewNatGatewayDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new vpc/natgateways dao: %w", err)
 	}
 	return &NatGatewayDAO{
 		BaseDAO: dao.NewBaseDAO("vpc", "nat-gateways"),
