@@ -39,6 +39,7 @@ brews:
   - repository:
       owner: clawscli
       name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     homepage: https://github.com/clawscli/claws
     description: "Terminal UI for AWS resource management"
     license: "Apache-2.0"
