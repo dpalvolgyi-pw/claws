@@ -43,11 +43,17 @@ trap "rm -rf '$TMP'" EXIT
 
 # Download binary and checksums
 TARBALL="claws-${OS}-${ARCH}.tar.gz"
-curl -fsSL "${BASE_URL}/${TARBALL}" -o "$TMP/$TARBALL"
-curl -fsSL "${BASE_URL}/checksums.txt" -o "$TMP/checksums.txt"
+if ! curl -fsSL "${BASE_URL}/${TARBALL}" -o "$TMP/$TARBALL"; then
+  echo "Error: failed to download ${BASE_URL}/${TARBALL}" >&2
+  exit 1
+fi
+if ! curl -fsSL "${BASE_URL}/checksums.txt" -o "$TMP/checksums.txt"; then
+  echo "Error: failed to download ${BASE_URL}/checksums.txt" >&2
+  exit 1
+fi
 
 # Verify checksum
-cd "$TMP"
+cd "$TMP" || { echo "Error: failed to cd to temp directory" >&2; exit 1; }
 CHECKSUM_LINE=$(grep -F "$TARBALL" checksums.txt || true)
 if [ -z "$CHECKSUM_LINE" ]; then
   echo "Error: checksum not found for $TARBALL" >&2
@@ -63,6 +69,10 @@ fi
 
 # Extract and install
 tar xzf "$TARBALL"
+if [ ! -f claws ]; then
+  echo "Error: claws binary not found in archive" >&2
+  exit 1
+fi
 mkdir -p "$INSTALL_DIR"
 mv claws "$INSTALL_DIR/"
 chmod +x "$INSTALL_DIR/claws"
