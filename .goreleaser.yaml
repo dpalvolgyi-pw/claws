@@ -1,8 +1,22 @@
 version: 2
 
 builds:
-  # Main build (Linux/Darwin)
-  - id: main
+  # ARM64 build (always)
+  - id: arm64
+    main: ./cmd/claws
+    binary: claws
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+  # AMD64 build (skip for prereleases)
+  - id: amd64
     main: ./cmd/claws
     binary: claws
     env:
@@ -12,9 +26,9 @@ builds:
       - darwin
     goarch:
       - amd64
-      - arm64
     ldflags:
       - -s -w -X main.version={{.Version}}
+    skip: '{{ ne .Prerelease "" }}'
 
   # Windows build (skip for prereleases)
   - id: windows
