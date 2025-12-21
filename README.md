@@ -39,6 +39,21 @@ brew tap clawscli/tap
 brew install --cask claws
 ```
 
+### Install Script (macOS/Linux)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/clawscli/claws/main/install.sh | sh
+```
+
+Options:
+```bash
+# Install specific version
+curl -fsSL https://raw.githubusercontent.com/clawscli/claws/main/install.sh | VERSION=vX.Y.Z sh
+
+# Install to custom directory
+curl -fsSL https://raw.githubusercontent.com/clawscli/claws/main/install.sh | INSTALL_DIR=/usr/local/bin sh
+```
+
 ### Download Binary
 
 Download from [GitHub Releases](https://github.com/clawscli/claws/releases/latest):
