@@ -74,6 +74,15 @@ type Refreshable interface {
 	CanRefresh() bool
 }
 
+// IsEscKey returns true if the key message represents an escape key press.
+// This handles various terminal escape sequences consistently across views.
+// We check for rune 27 (raw ESC byte) because some terminals send ESC as a raw
+// byte rather than a recognized key type.
+func IsEscKey(msg tea.KeyMsg) bool {
+	return msg.String() == "esc" || msg.Type == tea.KeyEsc || msg.Type == tea.KeyEscape ||
+		(msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == 27)
+}
+
 // NavigationHelper provides common navigation functionality
 type NavigationHelper struct {
 	Ctx      context.Context

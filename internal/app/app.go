@@ -18,8 +18,16 @@ import (
 	"github.com/clawscli/claws/internal/view"
 )
 
+// awsInitTimeout is the maximum time to wait for AWS context initialization
+const awsInitTimeout = 5 * time.Second
+
 // clearErrorMsg is sent to clear transient errors after a timeout
 type clearErrorMsg struct{}
+
+// awsContextReadyMsg is sent when AWS context initialization completes
+type awsContextReadyMsg struct {
+	err error
+}
 
 // App is the main application model
 // appStyles holds cached lipgloss styles for performance
@@ -69,6 +77,9 @@ type App struct {
 	showWarnings  bool
 	warningsReady bool // true after first render, to ignore initial terminal responses
 
+	// AWS initialization state
+	awsInitializing bool
+
 	// Cached styles
 	styles appStyles
 }
@@ -87,19 +98,20 @@ func New(ctx context.Context, reg *registry.Registry) *App {
 
 // Init implements tea.Model
 func (a *App) Init() tea.Cmd {
-	// Initialize AWS context (detect region from IMDS, fetch account ID)
-	if err := aws.InitContext(a.ctx); err != nil {
-		config.Global().AddWarning("AWS init failed: " + err.Error())
-	}
-
-	// Show warnings if any
-	if len(config.Global().Warnings()) > 0 {
-		a.showWarnings = true
-	}
-
-	// Start with the service browser view
+	// Start with the service browser view immediately (no blocking on AWS calls)
 	a.currentView = view.NewServiceBrowser(a.ctx, a.registry)
-	return a.currentView.Init()
+	a.awsInitializing = true
+
+	// Initialize AWS context in background (region detection, account ID fetch)
+	// Use timeout to avoid indefinite hang on network issues
+	initAWSCmd := func() tea.Msg {
+		ctx, cancel := context.WithTimeout(a.ctx, awsInitTimeout)
+		defer cancel()
+		err := aws.InitContext(ctx)
+		return awsContextReadyMsg{err: err}
+	}
+
+	return tea.Batch(a.currentView.Init(), initAWSCmd)
 }
 
 // Update implements tea.Model
@@ -163,10 +175,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		// Handle back navigation (esc or backspace)
-		// Check for ESC key in various forms (KeyEsc, KeyEscape, or raw ESC byte as KeyRunes)
-		isEsc := msg.String() == "esc" || msg.Type == tea.KeyEsc || msg.Type == tea.KeyEscape ||
-			(msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == 27)
-		isBack := isEsc || msg.Type == tea.KeyBackspace
+		isBack := view.IsEscKey(msg) || msg.Type == tea.KeyBackspace
 
 		if isBack {
 			// If current view has active input, let it handle esc first
@@ -257,6 +266,16 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case clearErrorMsg:
 		a.err = nil
+		return a, nil
+
+	case awsContextReadyMsg:
+		a.awsInitializing = false
+		if msg.err != nil {
+			log.Debug("AWS context initialization failed", "error", msg.err)
+			config.Global().AddWarning("AWS init failed: " + msg.err.Error())
+			a.showWarnings = true
+		}
+		// Trigger a re-render to update header with account ID
 		return a, nil
 
 	case navmsg.RegionChangedMsg:
@@ -363,6 +382,11 @@ func (a *App) View() string {
 	if config.Global().ReadOnly() {
 		roIndicator := a.styles.readOnly.Render("READ-ONLY")
 		statusContent = roIndicator + " " + statusContent
+	}
+
+	// Add AWS initializing indicator
+	if a.awsInitializing {
+		statusContent = ui.DimStyle().Render("AWS initializing...") + " • " + statusContent
 	}
 
 	status := a.styles.status.Render(statusContent)

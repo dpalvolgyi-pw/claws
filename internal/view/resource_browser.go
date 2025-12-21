@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -87,6 +88,9 @@ type ResourceBrowser struct {
 	sortColumn    int  // column index to sort by (-1 = no sort)
 	sortAscending bool // sort direction
 
+	// Loading spinner
+	spinner spinner.Model
+
 	// Cached styles (initialized in initStyles)
 	styles resourceBrowserStyles
 }
@@ -144,6 +148,7 @@ func newResourceBrowser(ctx context.Context, reg *registry.Registry, service, re
 		loading:       true,
 		filterInput:   ti,
 		headerPanel:   hp,
+		spinner:       ui.NewSpinner(),
 		styles:        newResourceBrowserStyles(),
 		pageSize:      100, // default page size for paginated resources
 		sortColumn:    -1,  // no sorting by default
@@ -153,10 +158,11 @@ func newResourceBrowser(ctx context.Context, reg *registry.Registry, service, re
 
 // Init implements tea.Model
 func (r *ResourceBrowser) Init() tea.Cmd {
+	cmds := []tea.Cmd{r.loadResources, r.spinner.Tick}
 	if r.autoReload {
-		return tea.Batch(r.loadResources, r.tickCmd())
+		cmds = append(cmds, r.tickCmd())
 	}
-	return r.loadResources
+	return tea.Batch(cmds...)
 }
 
 // tickCmd returns a command that ticks after the auto-reload interval
@@ -327,7 +333,7 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Reload resources (e.g., after region/profile change)
 		r.loading = true
 		r.err = nil
-		return r, r.loadResources
+		return r, tea.Batch(r.loadResources, r.spinner.Tick)
 
 	case SortMsg:
 		// Handle sort command
@@ -360,10 +366,7 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		// Handle filter mode
 		if r.filterActive {
-			// Check for esc (both string and raw byte)
-			isEsc := msg.String() == "esc" || msg.Type == tea.KeyEsc || msg.Type == tea.KeyEscape ||
-				(msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == 27)
-			if isEsc {
+			if IsEscKey(msg) {
 				r.filterActive = false
 				r.filterInput.Blur()
 				return r, nil
@@ -402,7 +405,7 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+r":
 			r.loading = true
 			r.err = nil
-			return r, r.loadResources
+			return r, tea.Batch(r.loadResources, r.spinner.Tick)
 		case "c":
 			// Clear all filters (text filter and field filter)
 			r.filterText = ""
@@ -415,13 +418,8 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d", "enter":
 			if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) {
 				resource := r.filtered[r.table.Cursor()]
-				// Try to refresh resource via Get() for extended details
-				if d, err := r.registry.GetDAO(r.ctx, r.service, r.resourceType); err == nil {
-					if refreshed, err := d.Get(r.ctx, resource.GetID()); err == nil {
-						resource = refreshed
-					}
-				}
-				detailView := NewDetailView(r.ctx, resource, r.renderer, r.service, r.resourceType, r.registry)
+				// Pass DAO for async refresh in DetailView
+				detailView := NewDetailView(r.ctx, resource, r.renderer, r.service, r.resourceType, r.registry, r.dao)
 				return r, func() tea.Msg {
 					return NavigateMsg{View: detailView}
 				}
@@ -440,11 +438,11 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "tab":
 			// Cycle to next resource type
 			r.cycleResourceType(1)
-			return r, r.loadResources
+			return r, tea.Batch(r.loadResources, r.spinner.Tick)
 		case "shift+tab":
 			// Cycle to previous resource type
 			r.cycleResourceType(-1)
-			return r, r.loadResources
+			return r, tea.Batch(r.loadResources, r.spinner.Tick)
 		case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 			// Switch to resource type by number
 			idx := int(msg.String()[0] - '1')
@@ -453,7 +451,7 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				r.loading = true
 				r.filterText = ""
 				r.filterInput.SetValue("")
-				return r, r.loadResources
+				return r, tea.Batch(r.loadResources, r.spinner.Tick)
 			}
 		case "N":
 			// Manual next page load (useful when filter is active)
@@ -462,6 +460,15 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return r, r.loadNextPage
 			}
 		}
+
+	case spinner.TickMsg:
+		// Update spinner while loading
+		if r.loading {
+			var cmd tea.Cmd
+			r.spinner, cmd = r.spinner.Update(msg)
+			return r, cmd
+		}
+		return r, nil
 	}
 
 	var cmd tea.Cmd
@@ -527,7 +534,7 @@ func (r *ResourceBrowser) loadNextPage() tea.Msg {
 	}
 }
 
-// handleNavigation checks if a key matches a navigation shortcut
+// buildTable rebuilds the table with current filtered resources
 func (r *ResourceBrowser) buildTable() {
 	if r.renderer == nil {
 		return
@@ -607,7 +614,7 @@ func (r *ResourceBrowser) buildTable() {
 func (r *ResourceBrowser) View() string {
 	if r.loading {
 		header := r.headerPanel.Render(r.service, r.resourceType, nil)
-		return header + "\n" + ui.DimStyle().Render("Loading...")
+		return header + "\n" + r.spinner.View() + " Loading..."
 	}
 
 	if r.err != nil {

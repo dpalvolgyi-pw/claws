@@ -4,11 +4,13 @@ import (
 	"context"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/clawscli/claws/internal/action"
 	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/log"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/render"
 	"github.com/clawscli/claws/internal/ui"
@@ -43,11 +45,15 @@ type DetailView struct {
 	width       int
 	height      int
 	registry    *registry.Registry
+	dao         dao.DAO // for async refresh
+	refreshing  bool    // true while fetching extended details
+	refreshErr  error   // error from last refresh attempt
+	spinner     spinner.Model
 	styles      detailViewStyles
 }
 
 // NewDetailView creates a new DetailView
-func NewDetailView(ctx context.Context, resource dao.Resource, renderer render.Renderer, service, resType string, reg *registry.Registry) *DetailView {
+func NewDetailView(ctx context.Context, resource dao.Resource, renderer render.Renderer, service, resType string, reg *registry.Registry, d dao.DAO) *DetailView {
 	hp := NewHeaderPanel()
 	hp.SetWidth(120) // Default width until SetSize is called
 
@@ -58,33 +64,81 @@ func NewDetailView(ctx context.Context, resource dao.Resource, renderer render.R
 		service:     service,
 		resType:     resType,
 		registry:    reg,
+		dao:         d,
 		headerPanel: hp,
+		spinner:     ui.NewSpinner(),
 		styles:      newDetailViewStyles(),
 	}
 }
 
+// detailRefreshMsg is sent when async resource refresh completes
+type detailRefreshMsg struct {
+	resource dao.Resource
+	err      error
+}
+
 // Init implements tea.Model
 func (d *DetailView) Init() tea.Cmd {
+	// Start async refresh for extended details if DAO supports Get operation
+	if d.dao != nil && d.dao.Supports(dao.OpGet) {
+		d.refreshing = true
+		return tea.Batch(d.spinner.Tick, d.refreshResource)
+	}
 	return nil
+}
+
+// refreshResource fetches extended resource details in background
+func (d *DetailView) refreshResource() tea.Msg {
+	if d.dao == nil || d.resource == nil {
+		return detailRefreshMsg{resource: d.resource}
+	}
+	refreshed, err := d.dao.Get(d.ctx, d.resource.GetID())
+	if err != nil {
+		return detailRefreshMsg{resource: d.resource, err: err}
+	}
+	return detailRefreshMsg{resource: refreshed}
 }
 
 // Update implements tea.Model
 func (d *DetailView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if keyMsg, ok := msg.(tea.KeyMsg); ok {
-		// Check for esc (both string and raw byte) - let app handle back navigation
-		isEsc := keyMsg.String() == "esc" || keyMsg.Type == tea.KeyEsc || keyMsg.Type == tea.KeyEscape ||
-			(keyMsg.Type == tea.KeyRunes && len(keyMsg.Runes) == 1 && keyMsg.Runes[0] == 27)
-		if isEsc {
+	switch msg := msg.(type) {
+	case detailRefreshMsg:
+		d.refreshing = false
+		if msg.err != nil {
+			log.Warn("failed to refresh resource details", "error", msg.err)
+			d.refreshErr = msg.err
+		} else {
+			d.refreshErr = nil
+			d.resource = msg.resource
+			// Re-render content with refreshed data
+			if d.ready {
+				content := d.renderContent()
+				d.viewport.SetContent(content)
+			}
+		}
+		return d, nil
+
+	case spinner.TickMsg:
+		if d.refreshing {
+			var cmd tea.Cmd
+			d.spinner, cmd = d.spinner.Update(msg)
+			return d, cmd
+		}
+		return d, nil
+
+	case tea.KeyMsg:
+		// Let app handle back navigation
+		if IsEscKey(msg) {
 			return d, nil
 		}
 
 		// Check navigation shortcuts
-		if model, cmd := d.handleNavigation(keyMsg.String()); model != nil {
+		if model, cmd := d.handleNavigation(msg.String()); model != nil {
 			return model, cmd
 		}
 
 		// Open action menu (only if actions exist)
-		if keyMsg.String() == "a" {
+		if msg.String() == "a" {
 			if actions := action.Global.Get(d.service, d.resType); len(actions) > 0 {
 				actionMenu := NewActionMenu(d.ctx, d.resource, d.service, d.resType)
 				return d, func() tea.Msg {
@@ -176,7 +230,15 @@ func (d *DetailView) SetSize(width, height int) tea.Cmd {
 
 // StatusLine implements View
 func (d *DetailView) StatusLine() string {
-	parts := []string{d.resource.GetID(), "↑/↓:scroll"}
+	parts := []string{d.resource.GetID()}
+
+	if d.refreshing {
+		parts = append(parts, d.spinner.View()+" refreshing...")
+	} else if d.refreshErr != nil {
+		parts = append(parts, "⚠ refresh failed")
+	}
+
+	parts = append(parts, "↑/↓:scroll")
 
 	if actions := action.Global.Get(d.service, d.resType); len(actions) > 0 {
 		parts = append(parts, "a:actions")
