@@ -15,7 +15,7 @@ builds:
     ldflags:
       - -s -w -X main.version={{.Version}}
 
-  # AMD64 build (skip for prereleases)
+  # AMD64 build (skip for prereleases unless tag contains "amd64" or "all")
   - id: amd64
     main: ./cmd/claws
     binary: claws
@@ -28,9 +28,9 @@ builds:
       - amd64
     ldflags:
       - -s -w -X main.version={{.Version}}
-    skip: '{{ ne .Prerelease "" }}'
+    skip: '{{ and (ne .Prerelease "") (not (or (contains .Tag "amd64") (contains .Tag "all"))) }}'
 
-  # Windows build (skip for prereleases)
+  # Windows build (skip for prereleases unless tag contains "win" or "all")
   - id: windows
     main: ./cmd/claws
     binary: claws
@@ -42,7 +42,7 @@ builds:
       - amd64
     ldflags:
       - -s -w -X main.version={{.Version}}
-    skip: '{{ ne .Prerelease "" }}'
+    skip: '{{ and (ne .Prerelease "") (not (or (contains .Tag "win") (contains .Tag "all"))) }}'
 
 archives:
   - formats: [tar.gz]
