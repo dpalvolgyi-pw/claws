@@ -169,3 +169,86 @@ func TestBucketResource_BucketRegionNil(t *testing.T) {
 		t.Errorf("Region should be empty for nil BucketRegion, got %q", resource.Region)
 	}
 }
+
+func TestBucketResource_MergeFrom(t *testing.T) {
+	creationTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+
+	// Original from List() has CreationDate
+	original := &BucketResource{
+		BucketName:   "test-bucket",
+		CreationDate: creationTime,
+	}
+
+	// Refreshed from Get() has extended info but no CreationDate
+	refreshed := &BucketResource{
+		BucketName: "test-bucket",
+		Region:     "us-west-2",
+		Versioning: "Enabled",
+		// CreationDate is zero
+	}
+
+	refreshed.MergeFrom(original)
+
+	// CreationDate should be preserved from original
+	if !refreshed.CreationDate.Equal(creationTime) {
+		t.Errorf("CreationDate = %v, want %v", refreshed.CreationDate, creationTime)
+	}
+
+	// Refreshed fields should be retained
+	if refreshed.Versioning != "Enabled" {
+		t.Errorf("Versioning = %q, want %q", refreshed.Versioning, "Enabled")
+	}
+	if refreshed.Region != "us-west-2" {
+		t.Errorf("Region = %q, want %q", refreshed.Region, "us-west-2")
+	}
+}
+
+func TestBucketResource_MergeFrom_NoOverwrite(t *testing.T) {
+	originalTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	refreshedTime := time.Date(2024, 6, 20, 15, 45, 0, 0, time.UTC)
+
+	original := &BucketResource{
+		CreationDate: originalTime,
+	}
+
+	// If refreshed already has CreationDate, don't overwrite
+	refreshed := &BucketResource{
+		CreationDate: refreshedTime,
+	}
+
+	refreshed.MergeFrom(original)
+
+	// Should keep refreshed value, not original
+	if !refreshed.CreationDate.Equal(refreshedTime) {
+		t.Errorf("CreationDate = %v, want %v (should not overwrite)", refreshed.CreationDate, refreshedTime)
+	}
+}
+
+func TestBucketResource_MergeFrom_WrongType(t *testing.T) {
+	creationTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	refreshed := &BucketResource{
+		BucketName:   "test-bucket",
+		CreationDate: creationTime,
+	}
+
+	// Should not panic when passed nil
+	refreshed.MergeFrom(nil)
+
+	// Should not panic and should not modify when passed wrong type
+	other := &otherResource{}
+	refreshed.MergeFrom(other)
+
+	// CreationDate should remain unchanged
+	if !refreshed.CreationDate.Equal(creationTime) {
+		t.Errorf("CreationDate should not change when merging wrong type")
+	}
+}
+
+// otherResource is a mock for testing wrong type handling
+type otherResource struct{}
+
+func (r *otherResource) GetID() string              { return "" }
+func (r *otherResource) GetName() string            { return "" }
+func (r *otherResource) GetARN() string             { return "" }
+func (r *otherResource) GetTags() map[string]string { return nil }
+func (r *otherResource) Raw() any                   { return nil }
