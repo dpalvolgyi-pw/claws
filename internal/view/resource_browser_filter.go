@@ -132,10 +132,12 @@ func (r *ResourceBrowser) matchesFilter(res dao.Resource, cols []render.Column, 
 		return true
 	}
 
+	unwrapped := dao.UnwrapResource(res)
+
 	// Check all column values (fuzzy match)
 	for _, col := range cols {
 		if col.Getter != nil {
-			if fuzzyMatch(col.Getter(res), filter) {
+			if fuzzyMatch(col.Getter(unwrapped), filter) {
 				return true
 			}
 		}
@@ -190,4 +192,16 @@ func getFieldValue(data any, fieldName string) string {
 	default:
 		return fmt.Sprintf("%v", field.Interface())
 	}
+}
+
+// fuzzyMatch checks if pattern characters appear in order in str (case insensitive)
+func fuzzyMatch(str, pattern string) bool {
+	str = strings.ToLower(str)
+	pi := 0
+	for i := 0; i < len(str) && pi < len(pattern); i++ {
+		if str[i] == pattern[pi] {
+			pi++
+		}
+	}
+	return pi == len(pattern)
 }
