@@ -9,6 +9,8 @@ import (
 	appconfig "github.com/clawscli/claws/internal/config"
 )
 
+const maxConcurrentProfileFetches = 50
+
 // InitContext initializes AWS context by loading config and fetching account ID.
 // Updates the global config with region (if not already set) and account ID.
 func InitContext(ctx context.Context) error {
@@ -51,11 +53,14 @@ func RefreshContextData(ctx context.Context) (region string, accountIDs map[stri
 	accountIDs = make(map[string]string)
 	var mu sync.Mutex
 	errChan := make(chan error, len(selections))
+	sem := make(chan struct{}, maxConcurrentProfileFetches)
 
 	for _, sel := range selections {
 		wg.Add(1)
 		go func(s appconfig.ProfileSelection) {
 			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
 			cfg, loadErr := config.LoadDefaultConfig(ctx, SelectionLoadOptions(s)...)
 			if loadErr != nil {
 				errChan <- loadErr
