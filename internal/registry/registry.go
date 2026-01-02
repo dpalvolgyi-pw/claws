@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/clawscli/claws/internal/dao"
@@ -53,6 +54,12 @@ type Registry struct {
 	aliases      map[string]string         // alias -> service name or service/resource
 	displayNames map[string]string         // service -> display name for UI
 	categories   []ServiceCategory         // ordered list of service categories
+
+	// Cached computed values (aliases are immutable after init, safe to cache)
+	aliasListOnce       sync.Once           // guards aliasListCache initialization
+	aliasListCache      []string            // cached result of GetAliases()
+	serviceAliasesOnce  sync.Once           // guards serviceAliasesCache initialization
+	serviceAliasesCache map[string][]string // cached result of GetAliasesForService() by service
 }
 
 // New creates a new Registry
@@ -281,20 +288,43 @@ func (r *Registry) ResolveAlias(input string) (string, string, bool) {
 	return input, "", false
 }
 
-// GetAliasesForService returns all aliases for a given service
+// GetAliasesForService returns all aliases for a given service.
 func (r *Registry) GetAliasesForService(service string) []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.serviceAliasesOnce.Do(func() {
+		r.mu.RLock()
+		defer r.mu.RUnlock()
 
-	var aliases []string
-	for alias, target := range r.aliases {
-		// Check if target matches service (handle "service" or "service/resource")
-		if target == service || (len(target) > len(service) && target[:len(service)] == service && target[len(service)] == '/') {
-			aliases = append(aliases, alias)
+		r.serviceAliasesCache = make(map[string][]string)
+		for alias, target := range r.aliases {
+			svc := target
+			if idx := strings.Index(target, "/"); idx != -1 {
+				svc = target[:idx]
+			}
+			r.serviceAliasesCache[svc] = append(r.serviceAliasesCache[svc], alias)
 		}
-	}
-	slices.Sort(aliases)
-	return aliases
+		for svc := range r.serviceAliasesCache {
+			slices.Sort(r.serviceAliasesCache[svc])
+		}
+	})
+	return slices.Clone(r.serviceAliasesCache[service])
+}
+
+// GetAliases returns all aliases (excluding self-referential ones like "sfn" -> "sfn").
+func (r *Registry) GetAliases() []string {
+	r.aliasListOnce.Do(func() {
+		r.mu.RLock()
+		defer r.mu.RUnlock()
+
+		var aliases []string
+		for alias, target := range r.aliases {
+			if alias != target {
+				aliases = append(aliases, alias)
+			}
+		}
+		slices.Sort(aliases)
+		r.aliasListCache = aliases
+	})
+	return slices.Clone(r.aliasListCache)
 }
 
 // RegisterCustom registers a custom (hand-written) implementation

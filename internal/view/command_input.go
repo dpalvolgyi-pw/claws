@@ -3,6 +3,7 @@ package view
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
@@ -228,63 +229,58 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 		return nil, &NavigateMsg{View: browser, ClearStack: true}
 	}
 
-	// Handle sort command: :sort, :sort <column>, :sort desc <column>
-	if input == "sort" || strings.HasPrefix(input, "sort ") {
-		return c.parseSortCommand(input), nil
+	// Handle sort command: :sort (clear) or :sort <column> (sort by column)
+	if input == "sort" {
+		return func() tea.Msg {
+			return SortMsg{Column: "", Ascending: true}
+		}, nil
+	}
+	if suffix, ok := strings.CutPrefix(input, "sort "); ok {
+		return c.parseSortArgs(suffix), nil
 	}
 
-	if input == "login" || strings.HasPrefix(input, "login ") {
-		profileName := "claws-login"
-		if strings.HasPrefix(input, "login ") {
-			if name := strings.TrimSpace(strings.TrimPrefix(input, "login ")); name != "" {
-				if !config.IsValidProfileName(name) {
-					return func() tea.Msg {
-						return ErrorMsg{Err: fmt.Errorf("invalid profile name: %s", name)}
-					}, nil
-				}
-				profileName = name
-			}
+	// Handle login command: :login (default) or :login <profile>
+	if input == "login" {
+		return c.executeLogin("claws-login"), nil
+	}
+	if suffix, ok := strings.CutPrefix(input, "login "); ok {
+		profileName := strings.TrimSpace(suffix)
+		if profileName == "" {
+			return c.executeLogin("claws-login"), nil
 		}
-		exec := &action.SimpleExec{
-			Command:    fmt.Sprintf("aws login --remote --profile %s", profileName),
-			ActionName: action.ActionNameLogin,
-			SkipAWSEnv: true,
+		if !config.IsValidProfileName(profileName) {
+			return func() tea.Msg {
+				return ErrorMsg{Err: fmt.Errorf("invalid profile name: %q", profileName)}
+			}, nil
 		}
-		return tea.Exec(exec, func(err error) tea.Msg {
-			if err != nil {
-				return ErrorMsg{Err: err}
-			}
-			sel := config.NamedProfile(profileName)
-			config.Global().SetSelections([]config.ProfileSelection{sel})
-			return navmsg.ProfilesChangedMsg{Selections: []config.ProfileSelection{sel}}
-		}), nil
+		return c.executeLogin(profileName), nil
 	}
 
-	// Handle tag command: :tag <filter> - filter current view by tag
-	if input == "tag" || strings.HasPrefix(input, "tag ") {
-		tagFilter := ""
-		if strings.HasPrefix(input, "tag ") {
-			tagFilter = strings.TrimPrefix(input, "tag ")
-		}
+	// Handle tag command: :tag (clear) or :tag <filter> (filter by tag)
+	if input == "tag" {
+		return func() tea.Msg {
+			return TagFilterMsg{Filter: ""}
+		}, nil
+	}
+	if tagFilter, ok := strings.CutPrefix(input, "tag "); ok {
 		return func() tea.Msg {
 			return TagFilterMsg{Filter: tagFilter}
 		}, nil
 	}
 
-	// Handle tags command: :tags, :tags <filter> - cross-service tag search via Tagging API
-	if input == "tags" || strings.HasPrefix(input, "tags ") {
-		tagFilter := ""
-		if strings.HasPrefix(input, "tags ") {
-			tagFilter = strings.TrimPrefix(input, "tags ")
-		}
+	// Handle tags command: :tags (all) or :tags <filter> (cross-service tag search)
+	if input == "tags" {
+		browser := NewTagSearchView(c.ctx, c.registry, "")
+		return nil, &NavigateMsg{View: browser}
+	}
+	if tagFilter, ok := strings.CutPrefix(input, "tags "); ok {
 		browser := NewTagSearchView(c.ctx, c.registry, tagFilter)
 		return nil, &NavigateMsg{View: browser}
 	}
 
 	// Handle diff command: :diff <name> or :diff <name1> <name2>
-	if strings.HasPrefix(input, "diff ") {
-		args := strings.TrimSpace(strings.TrimPrefix(input, "diff "))
-		parts := strings.Fields(args)
+	if suffix, ok := strings.CutPrefix(input, "diff "); ok {
+		parts := strings.Fields(suffix)
 		if len(parts) == 1 {
 			// :diff <name> - compare current row with named resource
 			return func() tea.Msg {
@@ -356,35 +352,36 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 	return nil, nil
 }
 
-// parseSortCommand parses the sort command and returns a SortMsg command
-// Syntax: :sort, :sort <column>, :sort desc <column>
-func (c *CommandInput) parseSortCommand(input string) tea.Cmd {
-	// :sort - clear sorting
-	if input == "sort" {
-		return func() tea.Msg {
-			return SortMsg{Column: "", Ascending: true}
-		}
-	}
-
-	// Parse arguments
-	args := strings.TrimPrefix(input, "sort ")
+func (c *CommandInput) parseSortArgs(args string) tea.Cmd {
 	ascending := true
 	column := args
 
-	// Check for "desc" prefix
-	if strings.HasPrefix(args, "desc ") {
+	if col, ok := strings.CutPrefix(args, "desc "); ok {
 		ascending = false
-		column = strings.TrimPrefix(args, "desc ")
-	} else if strings.HasPrefix(args, "asc ") {
-		ascending = true
-		column = strings.TrimPrefix(args, "asc ")
+		column = col
+	} else if col, ok := strings.CutPrefix(args, "asc "); ok {
+		column = col
 	}
-
-	column = strings.TrimSpace(column)
 
 	return func() tea.Msg {
-		return SortMsg{Column: column, Ascending: ascending}
+		return SortMsg{Column: strings.TrimSpace(column), Ascending: ascending}
 	}
+}
+
+func (c *CommandInput) executeLogin(profileName string) tea.Cmd {
+	exec := &action.SimpleExec{
+		Command:    fmt.Sprintf("aws login --remote --profile %s", profileName),
+		ActionName: action.ActionNameLogin,
+		SkipAWSEnv: true,
+	}
+	return tea.Exec(exec, func(err error) tea.Msg {
+		if err != nil {
+			return ErrorMsg{Err: err}
+		}
+		sel := config.NamedProfile(profileName)
+		config.Global().SetSelections([]config.ProfileSelection{sel})
+		return navmsg.ProfilesChangedMsg{Selections: []config.ProfileSelection{sel}}
+	})
 }
 
 // GetSuggestions returns command suggestions based on current input
@@ -393,18 +390,18 @@ func (c *CommandInput) GetSuggestions() []string {
 	var suggestions []string
 
 	// Handle :tag command completion
-	if strings.HasPrefix(input, "tag ") {
-		return c.getTagSuggestions("tag ", strings.TrimPrefix(input, "tag "))
+	if suffix, ok := strings.CutPrefix(input, "tag "); ok {
+		return c.getTagSuggestions("tag ", suffix)
 	}
 
 	// Handle :tags command completion (same as :tag)
-	if strings.HasPrefix(input, "tags ") {
-		return c.getTagSuggestions("tags ", strings.TrimPrefix(input, "tags "))
+	if suffix, ok := strings.CutPrefix(input, "tags "); ok {
+		return c.getTagSuggestions("tags ", suffix)
 	}
 
 	// Handle :diff command completion
-	if strings.HasPrefix(input, "diff ") {
-		return c.getDiffSuggestions(strings.TrimPrefix(input, "diff "))
+	if suffix, ok := strings.CutPrefix(input, "diff "); ok {
+		return c.getDiffSuggestions(suffix)
 	}
 
 	if strings.Contains(input, "/") {
@@ -462,40 +459,51 @@ func (c *CommandInput) GetSuggestions() []string {
 				suggestions = append(suggestions, svc)
 			}
 		}
+
+		for _, alias := range c.registry.GetAliases() {
+			if strings.HasPrefix(alias, input) {
+				suggestions = append(suggestions, alias)
+			}
+		}
+
+		slices.Sort(suggestions)
 	}
 
 	return suggestions
 }
 
-// getDiffSuggestions returns resource name suggestions for diff command
-// Supports: :diff <name1> and :diff <name1> <name2>
 func (c *CommandInput) getDiffSuggestions(args string) []string {
 	if c.diffProvider == nil {
 		return nil
 	}
 
-	var suggestions []string
 	names := c.diffProvider.GetResourceNames()
-
-	// Check if we're completing the second name (has space after first name)
 	parts := strings.SplitN(args, " ", 2)
+
 	if len(parts) == 2 {
-		// Completing second name: "diff name1 <prefix>"
 		firstName := parts[0]
 		secondPrefix := strings.ToLower(parts[1])
+
+		var filtered []string
 		for _, name := range names {
-			if name != firstName && (secondPrefix == "" || strings.Contains(strings.ToLower(name), secondPrefix)) {
-				suggestions = append(suggestions, "diff "+firstName+" "+name)
+			if name != firstName {
+				filtered = append(filtered, name)
 			}
 		}
-	} else {
-		// Completing first name: "diff <prefix>"
-		prefix := strings.ToLower(args)
-		for _, name := range names {
-			if prefix == "" || strings.Contains(strings.ToLower(name), prefix) {
-				suggestions = append(suggestions, "diff "+name)
-			}
+
+		matched := matchNamesWithFallback(filtered, secondPrefix)
+		var suggestions []string
+		for _, name := range matched {
+			suggestions = append(suggestions, "diff "+firstName+" "+name)
 		}
+		return suggestions
+	}
+
+	prefix := strings.ToLower(args)
+	matched := matchNamesWithFallback(names, prefix)
+	var suggestions []string
+	for _, name := range matched {
+		suggestions = append(suggestions, "diff "+name)
 	}
 	return suggestions
 }
