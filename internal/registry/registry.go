@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/clawscli/claws/internal/dao"
@@ -53,6 +54,12 @@ type Registry struct {
 	aliases      map[string]string         // alias -> service name or service/resource
 	displayNames map[string]string         // service -> display name for UI
 	categories   []ServiceCategory         // ordered list of service categories
+
+	// Cached computed values (aliases are immutable after init, safe to cache)
+	aliasListOnce       sync.Once           // guards aliasListCache initialization
+	aliasListCache      []string            // cached result of GetAliases()
+	serviceAliasesOnce  sync.Once           // guards serviceAliasesCache initialization
+	serviceAliasesCache map[string][]string // cached result of GetAliasesForService() by service
 }
 
 // New creates a new Registry
@@ -70,57 +77,60 @@ func New() *Registry {
 // defaultAliases returns the default service aliases
 func defaultAliases() map[string]string {
 	return map[string]string{
-		"cfn":           "cloudformation",
-		"cf":            "cloudformation",
-		"sg":            "ec2/security-groups",
-		"asg":           "autoscaling",
-		"cw":            "cloudwatch",
-		"logs":          "cloudwatch/log-groups",
-		"r53":           "route53",
-		"ssm":           "ssm",
-		"sm":            "secretsmanager",
-		"ddb":           "dynamodb",
-		"sqs":           "sqs",
-		"sns":           "sns",
-		"agentcore":     "bedrock-agentcore",
-		"kb":            "bedrock-agent/knowledge-bases",
-		"agent":         "bedrock-agent/agents",
-		"models":        "bedrock/foundation-models",
-		"guardrail":     "bedrock/guardrails",
-		"eb":            "eventbridge",
-		"events":        "eventbridge",
-		"stepfunctions": "sfn",
-		"sfn":           "sfn",
-		"sq":            "service-quotas",
-		"quotas":        "service-quotas",
-		"apigw":         "apigateway",
-		"api":           "apigateway",
-		"elb":           "elbv2",
-		"alb":           "elbv2",
-		"nlb":           "elbv2",
-		"redis":         "elasticache",
-		"cache":         "elasticache",
-		"es":            "opensearch",
-		"elasticsearch": "opensearch",
-		"cdn":           "cloudfront",
-		"dist":          "cloudfront",
-		"gd":            "guardduty",
-		"build":         "codebuild",
-		"cb":            "codebuild",
-		"pipeline":      "codepipeline",
-		"cp":            "codepipeline",
-		"waf":           "wafv2",
-		"ce":            "costexplorer",
-		"cost-explorer": "costexplorer",
-		"ta":            "trustedadvisor",
-		"co":            "computeoptimizer",
-		"sftp":          "transfer",
-		"aa":            "accessanalyzer",
-		"analyzer":      "accessanalyzer",
-		"ri":            "risp/reserved-instances",
-		"sp":            "risp/savings-plans",
-		"odcr":          "ec2/capacity-reservations",
-		"tgw":           "vpc/transit-gateways",
+		"cfn":              "cloudformation",
+		"cf":               "cloudformation",
+		"sg":               "ec2/security-groups",
+		"asg":              "autoscaling",
+		"cw":               "cloudwatch",
+		"logs":             "cloudwatch/log-groups",
+		"r53":              "route53",
+		"ssm":              "ssm",
+		"sm":               "secretsmanager",
+		"ddb":              "dynamodb",
+		"sqs":              "sqs",
+		"sns":              "sns",
+		"agentcore":        "bedrock-agentcore",
+		"kb":               "bedrock-agent/knowledge-bases",
+		"agent":            "bedrock-agent/agents",
+		"models":           "bedrock/foundation-models",
+		"guardrail":        "bedrock/guardrails",
+		"eb":               "events",
+		"eventbridge":      "events",
+		"sfn":              "stepfunctions",
+		"sq":               "service-quotas",
+		"quotas":           "service-quotas",
+		"apigw":            "apigateway",
+		"api":              "apigateway",
+		"elb":              "elbv2",
+		"alb":              "elbv2",
+		"nlb":              "elbv2",
+		"redis":            "elasticache",
+		"cache":            "elasticache",
+		"es":               "opensearch",
+		"elasticsearch":    "opensearch",
+		"cdn":              "cloudfront",
+		"dist":             "cloudfront",
+		"gd":               "guardduty",
+		"build":            "codebuild",
+		"cb":               "codebuild",
+		"pipeline":         "codepipeline",
+		"cp":               "codepipeline",
+		"waf":              "wafv2",
+		"costexplorer":     "ce",
+		"cost-explorer":    "ce",
+		"ta":               "trustedadvisor",
+		"computeoptimizer": "compute-optimizer",
+		"co":               "compute-optimizer",
+		"sftp":             "transfer",
+		"aa":               "accessanalyzer",
+		"analyzer":         "accessanalyzer",
+		"ri":               "risp/reserved-instances",
+		"sp":               "risp/savings-plans",
+		"odcr":             "ec2/capacity-reservations",
+		"tgw":              "vpc/transit-gateways",
+		"cognito":          "cognito-idp",
+		"config":           "configservice",
+		"macie":            "macie2",
 	}
 }
 
@@ -146,9 +156,9 @@ func defaultDisplayNames() map[string]string {
 		"cloudwatch":        "CloudWatch",
 		"codebuild":         "CodeBuild",
 		"codepipeline":      "CodePipeline",
-		"cognito":           "Cognito",
-		"config":            "Config",
-		"costexplorer":      "Cost Explorer",
+		"cognito-idp":       "Cognito",
+		"configservice":     "Config",
+		"ce":                "Cost Explorer",
 		"datasync":          "DataSync",
 		"detective":         "Detective",
 		"directconnect":     "Direct Connect",
@@ -164,13 +174,13 @@ func defaultDisplayNames() map[string]string {
 		"ecs":               "ECS",
 		"elbv2":             "Elastic Load Balancing",
 		"emr":               "EMR",
-		"eventbridge":       "EventBridge",
+		"events":            "EventBridge",
 		"iam":               "IAM",
 		"kinesis":           "Kinesis",
 		"kms":               "KMS",
 		"lambda":            "Lambda",
 		"license-manager":   "License Manager",
-		"macie":             "Macie",
+		"macie2":            "Macie",
 		"network-firewall":  "Network Firewall",
 		"opensearch":        "OpenSearch",
 		"organizations":     "Organizations",
@@ -184,7 +194,7 @@ func defaultDisplayNames() map[string]string {
 		"secretsmanager":    "Secrets Manager",
 		"securityhub":       "Security Hub",
 		"service-quotas":    "Service Quotas",
-		"sfn":               "Step Functions",
+		"stepfunctions":     "Step Functions",
 		"sns":               "SNS",
 		"sqs":               "SQS",
 		"ssm":               "Systems Manager",
@@ -194,7 +204,7 @@ func defaultDisplayNames() map[string]string {
 		"wafv2":             "WAF",
 		"xray":              "X-Ray",
 		"trustedadvisor":    "Trusted Advisor",
-		"computeoptimizer":  "Compute Optimizer",
+		"compute-optimizer": "Compute Optimizer",
 	}
 }
 
@@ -223,11 +233,11 @@ func defaultCategories() []ServiceCategory {
 		},
 		{
 			Name:     "Security & Identity",
-			Services: []string{"iam", "kms", "acm", "secretsmanager", "ssm", "cognito", "guardduty", "wafv2", "inspector2", "securityhub", "fms", "accessanalyzer", "detective", "macie"},
+			Services: []string{"iam", "kms", "acm", "secretsmanager", "ssm", "cognito-idp", "guardduty", "wafv2", "inspector2", "securityhub", "fms", "accessanalyzer", "detective", "macie2"},
 		},
 		{
 			Name:     "Integration",
-			Services: []string{"sqs", "sns", "eventbridge", "sfn", "kinesis", "transfer", "datasync"},
+			Services: []string{"sqs", "sns", "events", "stepfunctions", "kinesis", "transfer", "datasync"},
 		},
 		{
 			Name:     "DevOps",
@@ -239,11 +249,11 @@ func defaultCategories() []ServiceCategory {
 		},
 		{
 			Name:     "Governance",
-			Services: []string{"config", "organizations", "service-quotas", "license-manager", "backup", "trustedadvisor", "computeoptimizer"},
+			Services: []string{"configservice", "organizations", "service-quotas", "license-manager", "backup", "trustedadvisor", "compute-optimizer"},
 		},
 		{
 			Name:     "Cost Management",
-			Services: []string{"risp", "costexplorer", "budgets"},
+			Services: []string{"risp", "ce", "budgets"},
 		},
 	}
 }
@@ -278,20 +288,43 @@ func (r *Registry) ResolveAlias(input string) (string, string, bool) {
 	return input, "", false
 }
 
-// GetAliasesForService returns all aliases for a given service
+// GetAliasesForService returns all aliases for a given service.
 func (r *Registry) GetAliasesForService(service string) []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.serviceAliasesOnce.Do(func() {
+		r.mu.RLock()
+		defer r.mu.RUnlock()
 
-	var aliases []string
-	for alias, target := range r.aliases {
-		// Check if target matches service (handle "service" or "service/resource")
-		if target == service || (len(target) > len(service) && target[:len(service)] == service && target[len(service)] == '/') {
-			aliases = append(aliases, alias)
+		r.serviceAliasesCache = make(map[string][]string)
+		for alias, target := range r.aliases {
+			svc := target
+			if idx := strings.Index(target, "/"); idx != -1 {
+				svc = target[:idx]
+			}
+			r.serviceAliasesCache[svc] = append(r.serviceAliasesCache[svc], alias)
 		}
-	}
-	slices.Sort(aliases)
-	return aliases
+		for svc := range r.serviceAliasesCache {
+			slices.Sort(r.serviceAliasesCache[svc])
+		}
+	})
+	return slices.Clone(r.serviceAliasesCache[service])
+}
+
+// GetAliases returns all aliases (excluding self-referential ones like "sfn" -> "sfn").
+func (r *Registry) GetAliases() []string {
+	r.aliasListOnce.Do(func() {
+		r.mu.RLock()
+		defer r.mu.RUnlock()
+
+		var aliases []string
+		for alias, target := range r.aliases {
+			if alias != target {
+				aliases = append(aliases, alias)
+			}
+		}
+		slices.Sort(aliases)
+		r.aliasListCache = aliases
+	})
+	return slices.Clone(r.aliasListCache)
 }
 
 // RegisterCustom registers a custom (hand-written) implementation
@@ -460,9 +493,9 @@ var subResourceSet = map[string]struct{}{
 	"elbv2/targets":                    {},
 	"s3vectors/indexes":                {},
 	"guardduty/findings":               {},
-	"cognito/users":                    {},
+	"cognito-idp/users":                {},
 	"codepipeline/executions":          {},
-	"sfn/executions":                   {},
+	"stepfunctions/executions":         {},
 	"codebuild/builds":                 {},
 	"backup/recovery-points":           {},
 	"backup/selections":                {},
