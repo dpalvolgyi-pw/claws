@@ -12,26 +12,7 @@ import (
 )
 
 func init() {
-	// Register actions for CloudWatch Log Streams
 	action.Global.Register("cloudwatch", "log-streams", []action.Action{
-		{
-			Name:     action.ActionNameTailLogs,
-			Shortcut: "t",
-			Type:     action.ActionTypeExec,
-			Command:  `aws logs tail "${LOG_GROUP}" --log-stream-names "${NAME}" --since 1h --follow`,
-		},
-		{
-			Name:     action.ActionNameViewRecent1h,
-			Shortcut: "1",
-			Type:     action.ActionTypeExec,
-			Command:  `aws logs tail "${LOG_GROUP}" --log-stream-names "${NAME}" --since 1h | less -R`,
-		},
-		{
-			Name:     action.ActionNameViewRecent24h,
-			Shortcut: "2",
-			Type:     action.ActionTypeExec,
-			Command:  `aws logs tail "${LOG_GROUP}" --log-stream-names "${NAME}" --since 24h | less -R`,
-		},
 		{
 			Name:      "Delete",
 			Shortcut:  "D",
@@ -41,11 +22,9 @@ func init() {
 		},
 	})
 
-	// Register executor
 	action.RegisterExecutor("cloudwatch", "log-streams", executeLogStreamAction)
 }
 
-// executeLogStreamAction executes an action on a CloudWatch Log Stream
 func executeLogStreamAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
 	switch act.Operation {
 	case "DeleteLogStream":
@@ -55,17 +34,13 @@ func executeLogStreamAction(ctx context.Context, act action.Action, resource dao
 	}
 }
 
-func getCloudWatchLogsClient(ctx context.Context) (*cloudwatchlogs.Client, error) {
-	return cwClient.GetLogsClient(ctx)
-}
-
 func executeDeleteLogStream(ctx context.Context, resource dao.Resource) action.ActionResult {
-	ls, ok := resource.(*LogStreamResource)
+	ls, ok := dao.UnwrapResource(resource).(*LogStreamResource)
 	if !ok {
 		return action.InvalidResourceResult()
 	}
 
-	client, err := getCloudWatchLogsClient(ctx)
+	client, err := cwClient.GetLogsClient(ctx)
 	if err != nil {
 		return action.ActionResult{Success: false, Error: err}
 	}

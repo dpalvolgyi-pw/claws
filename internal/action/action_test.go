@@ -254,7 +254,6 @@ func TestIsAllowedInReadOnly(t *testing.T) {
 		act  Action
 		want bool
 	}{
-		{"view type allowed", Action{Type: ActionTypeView}, true},
 		{"exec allowlisted", Action{Type: ActionTypeExec, Name: ActionNameLogin}, true},
 		{"exec not allowlisted", Action{Type: ActionTypeExec, Name: "SomeExec"}, false},
 		{"api allowlisted", Action{Type: ActionTypeAPI, Operation: "DetectStackDrift"}, true},
@@ -410,7 +409,6 @@ func TestActionType(t *testing.T) {
 	}{
 		{ActionTypeExec, "exec"},
 		{ActionTypeAPI, "api"},
-		{ActionTypeView, "view"},
 	}
 
 	for _, tt := range tests {
@@ -592,7 +590,6 @@ func TestAction_Struct(t *testing.T) {
 		Type:      ActionTypeAPI,
 		Command:   "test cmd",
 		Operation: "TestOp",
-		Target:    "ec2/instances",
 		Confirm:   ConfirmSimple,
 	}
 
@@ -867,25 +864,6 @@ func TestReadOnlyEnforcement_ExecuteWithDAO(t *testing.T) {
 		// Should pass read-only gate (but may fail later for other reasons)
 		if result.Error == ErrReadOnlyDenied {
 			t.Error("read-only should not block allowlisted exec action")
-		}
-	})
-
-	t.Run("read-only always allows view actions", func(t *testing.T) {
-		// Enable read-only mode
-		config.Global().SetReadOnly(true)
-		defer config.Global().SetReadOnly(false)
-
-		action := Action{
-			Name:   "View Details",
-			Type:   ActionTypeView,
-			Target: "ec2/instances",
-		}
-
-		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "test"}, "ec2", "instances")
-
-		// View actions are always allowed - should not return ErrReadOnlyDenied
-		if result.Error == ErrReadOnlyDenied {
-			t.Error("read-only should not block view actions")
 		}
 	})
 

@@ -26,16 +26,20 @@ type SummaryField struct {
 	Style lipgloss.Style // Optional styling for the value
 }
 
-// Navigation defines a navigation shortcut to related resources
+// ViewTypeLogView indicates navigation should open a LogView instead of ResourceBrowser
+const ViewTypeLogView = "log-view"
+
+// Navigation defines a navigation shortcut to related resources or custom views
 type Navigation struct {
-	Key            string        // Shortcut key (e.g., "s" for subnets)
-	Label          string        // Display label (e.g., "Subnets")
-	Service        string        // Target service (e.g., "vpc")
-	Resource       string        // Target resource type (e.g., "subnets")
-	FilterField    string        // Field name to filter by (e.g., "VpcId")
-	FilterValue    string        // Value to filter by (extracted from current resource)
-	AutoReload     bool          // Enable auto-reload for this navigation
-	ReloadInterval time.Duration // Auto-reload interval (default: 3s)
+	Key            string
+	Label          string
+	Service        string
+	Resource       string
+	FilterField    string
+	FilterValue    string
+	AutoReload     bool
+	ReloadInterval time.Duration
+	ViewType       string
 }
 
 // Renderer defines the interface for rendering resources in table format
@@ -124,18 +128,17 @@ type Colorer func(value string) lipgloss.Style
 // StateColorer returns a colorer for common state values
 func StateColorer() Colorer {
 	return func(value string) lipgloss.Style {
-		t := ui.Current()
 		switch value {
 		case "running", "available", "active", "healthy":
-			return lipgloss.NewStyle().Foreground(t.Success)
+			return ui.SuccessStyle()
 		case "in-use", "attached":
-			return lipgloss.NewStyle().Foreground(t.Info)
+			return ui.InfoStyle()
 		case "stopped", "stopping", "deleting":
-			return lipgloss.NewStyle().Foreground(t.Warning)
+			return ui.WarningStyle()
 		case "terminated", "failed", "error", "unhealthy", "deleted":
-			return lipgloss.NewStyle().Foreground(t.Danger)
+			return ui.DangerStyle()
 		case "pending", "starting", "creating":
-			return lipgloss.NewStyle().Foreground(t.Pending)
+			return ui.PendingStyle()
 		default:
 			return lipgloss.NewStyle()
 		}
@@ -198,26 +201,6 @@ func FormatDuration(d time.Duration) string {
 
 // Style is an alias for lipgloss.Style for convenience
 type Style = lipgloss.Style
-
-// SuccessStyle returns a green style for success states
-func SuccessStyle() lipgloss.Style {
-	return ui.SuccessStyle()
-}
-
-// WarningStyle returns a yellow style for warning states
-func WarningStyle() lipgloss.Style {
-	return ui.WarningStyle()
-}
-
-// DangerStyle returns a red style for danger/error states
-func DangerStyle() lipgloss.Style {
-	return ui.DangerStyle()
-}
-
-// DimStyle returns a dimmed gray style
-func DimStyle() lipgloss.Style {
-	return ui.DimStyle()
-}
 
 // DefaultStyle returns a default unstyled style
 func DefaultStyle() lipgloss.Style {
