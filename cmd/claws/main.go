@@ -23,8 +23,13 @@ func main() {
 
 	propagateAllProxy()
 
-	// Apply CLI options to global config
+	fileCfg := config.File()
 	cfg := config.Global()
+
+	// CLI persistence flags override config file
+	if opts.persist != nil {
+		fileCfg.SetPersistenceEnabled(*opts.persist)
+	}
 
 	// Check environment variables (CLI flags take precedence)
 	if !opts.readOnly {
@@ -45,21 +50,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if opts.envCreds {
-		// Use environment credentials, ignore ~/.aws config
-		cfg.UseEnvOnly()
-	} else if opts.profile != "" {
-		cfg.UseProfile(opts.profile)
-		// Don't set AWS_PROFILE globally - it interferes with EnvOnly mode
-		// when switching profiles. SelectionLoadOptions uses WithSharedConfigProfile
-		// for SDK calls, and BuildSubprocessEnv handles subprocess environment.
-	}
-	// else: SDKDefault is the zero value, no action needed
-	if opts.region != "" {
-		cfg.SetRegion(opts.region)
-		// Don't set AWS_REGION globally - SelectionLoadOptions handles SDK calls,
-		// and BuildSubprocessEnv handles subprocess environment.
-	}
+	applyStartupConfig(opts, fileCfg, cfg)
 
 	// Enable logging if log file specified
 	if opts.logFile != "" {
@@ -86,12 +77,12 @@ func main() {
 	}
 }
 
-// cliOptions holds command line options
 type cliOptions struct {
 	profile  string
 	region   string
 	readOnly bool
 	envCreds bool
+	persist  *bool // nil = use config, true = enable, false = disable
 	logFile  string
 }
 
@@ -118,6 +109,12 @@ func parseFlags() cliOptions {
 			opts.readOnly = true
 		case "-e", "--env":
 			opts.envCreds = true
+		case "--persist":
+			t := true
+			opts.persist = &t
+		case "--no-persist":
+			f := false
+			opts.persist = &f
 		case "-l", "--log-file":
 			if i+1 < len(args) {
 				i++
@@ -158,6 +155,10 @@ func printUsage() {
 	fmt.Println("        Useful for instance profiles, ECS task roles, Lambda, etc.")
 	fmt.Println("  -ro, --read-only")
 	fmt.Println("        Run in read-only mode (disable dangerous actions)")
+	fmt.Println("  --persist")
+	fmt.Println("        Enable saving region/profile selection to config file")
+	fmt.Println("  --no-persist")
+	fmt.Println("        Disable saving region/profile selection to config file")
 	fmt.Println("  -l, --log-file <path>")
 	fmt.Println("        Enable debug logging to specified file")
 	fmt.Println("  -v, --version")
@@ -168,6 +169,30 @@ func printUsage() {
 	fmt.Println("Environment Variables:")
 	fmt.Println("  CLAWS_READ_ONLY=1|true   Enable read-only mode")
 	fmt.Println("  ALL_PROXY                Propagated to HTTP_PROXY/HTTPS_PROXY if not set")
+}
+
+// applyStartupConfig applies profile/region config with precedence:
+// 1. CLI flags (-p, -r, -e) - highest priority
+// 2. Config file startup section
+// 3. AWS SDK defaults
+func applyStartupConfig(opts cliOptions, fileCfg *config.FileConfig, cfg *config.Config) {
+	startupRegions, startupProfile := fileCfg.GetStartup()
+
+	// Apply profile: CLI > startup config
+	if opts.envCreds {
+		cfg.UseEnvOnly()
+	} else if opts.profile != "" {
+		cfg.UseProfile(opts.profile)
+	} else if startupProfile != "" {
+		cfg.UseProfile(startupProfile)
+	}
+
+	// Apply region: CLI > startup config
+	if opts.region != "" {
+		cfg.SetRegion(opts.region)
+	} else if len(startupRegions) > 0 {
+		cfg.SetRegions(startupRegions)
+	}
 }
 
 // propagateAllProxy copies ALL_PROXY to HTTP_PROXY/HTTPS_PROXY if not set.
