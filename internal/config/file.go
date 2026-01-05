@@ -336,11 +336,12 @@ func (c *FileConfig) SaveRegions(regions []string) error {
 		return nil
 	}
 
-	doWithLock(&c.mu, func() {
-		c.Startup.Regions = append([]string(nil), regions...)
-	})
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	return c.patchConfig(func(mapping *yaml.Node) {
+	c.Startup.Regions = append([]string(nil), regions...)
+
+	return c.patchConfigLocked(func(mapping *yaml.Node) {
 		startupNode := findOrCreateMappingKey(mapping, "startup")
 		ensureMappingNode(startupNode)
 		setSequenceValue(startupNode, "regions", regions)
@@ -348,12 +349,13 @@ func (c *FileConfig) SaveRegions(regions []string) error {
 }
 
 func (c *FileConfig) SaveProfiles(profiles []string) error {
-	doWithLock(&c.mu, func() {
-		c.Startup.Profiles = append([]string(nil), profiles...)
-		c.Startup.Profile = ""
-	})
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	return c.patchConfig(func(mapping *yaml.Node) {
+	c.Startup.Profiles = append([]string(nil), profiles...)
+	c.Startup.Profile = ""
+
+	return c.patchConfigLocked(func(mapping *yaml.Node) {
 		startupNode := findOrCreateMappingKey(mapping, "startup")
 		ensureMappingNode(startupNode)
 		setSequenceValue(startupNode, "profiles", profiles)
@@ -362,29 +364,31 @@ func (c *FileConfig) SaveProfiles(profiles []string) error {
 }
 
 func (c *FileConfig) SaveTheme(name string) error {
-	doWithLock(&c.mu, func() {
-		c.Theme.Preset = name
-	})
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	return c.patchConfig(func(mapping *yaml.Node) {
+	c.Theme.Preset = name
+
+	return c.patchConfigLocked(func(mapping *yaml.Node) {
 		setScalarValue(mapping, "theme", name)
 	})
 }
 
 func (c *FileConfig) SavePersistence(enabled bool) error {
-	doWithLock(&c.mu, func() {
-		c.Autosave.Enabled = enabled
-		c.persistenceOverride = nil
-	})
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	return c.patchConfig(func(mapping *yaml.Node) {
+	c.Autosave.Enabled = enabled
+	c.persistenceOverride = nil
+
+	return c.patchConfigLocked(func(mapping *yaml.Node) {
 		autosaveNode := findOrCreateMappingKey(mapping, "autosave")
 		ensureMappingNode(autosaveNode)
 		setBoolValue(autosaveNode, "enabled", enabled)
 	})
 }
 
-func (c *FileConfig) patchConfig(patchFn func(mapping *yaml.Node)) error {
+func (c *FileConfig) patchConfigLocked(patchFn func(mapping *yaml.Node)) error {
 	path, err := ConfigPath()
 	if err != nil {
 		return err

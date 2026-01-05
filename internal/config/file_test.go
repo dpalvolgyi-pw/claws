@@ -628,6 +628,45 @@ func TestStartupConfig_GetProfiles(t *testing.T) {
 	}
 }
 
+func TestConcurrentSaves(t *testing.T) {
+	tmpDir := t.TempDir()
+	origHome := os.Getenv("HOME")
+	defer os.Setenv("HOME", origHome)
+	os.Setenv("HOME", tmpDir)
+
+	cfg := &FileConfig{}
+
+	done := make(chan bool)
+	for i := 0; i < 5; i++ {
+		go func(id int) {
+			for j := 0; j < 20; j++ {
+				_ = cfg.SaveRegions([]string{"us-east-1", "us-west-2"})
+				_ = cfg.SaveProfiles([]string{"profile1", "profile2"})
+				_ = cfg.SaveTheme("nord")
+				_ = cfg.SavePersistence(true)
+			}
+			done <- true
+		}(i)
+	}
+
+	for i := 0; i < 5; i++ {
+		<-done
+	}
+
+	loaded, err := Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	regions, profiles := loaded.GetStartup()
+	if len(regions) != 2 {
+		t.Errorf("regions = %v, want 2 regions", regions)
+	}
+	if len(profiles) != 2 {
+		t.Errorf("profiles = %v, want 2 profiles", profiles)
+	}
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
 }
