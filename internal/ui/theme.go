@@ -306,103 +306,103 @@ func NoStyle() lipgloss.Style {
 }
 
 func DimStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(current.TextDim)
+	return lipgloss.NewStyle().Foreground(Current().TextDim)
 }
 
 // SuccessStyle returns a style for success states
 func SuccessStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(current.Success)
+	return lipgloss.NewStyle().Foreground(Current().Success)
 }
 
 // WarningStyle returns a style for warning states
 func WarningStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(current.Warning)
+	return lipgloss.NewStyle().Foreground(Current().Warning)
 }
 
 // DangerStyle returns a style for danger/error states
 func DangerStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(current.Danger)
+	return lipgloss.NewStyle().Foreground(Current().Danger)
 }
 
 func TitleStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Bold(true).Foreground(current.Primary)
+	return lipgloss.NewStyle().Bold(true).Foreground(Current().Primary)
 }
 
 func SelectedStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Background(current.Selection).Foreground(current.SelectionText)
+	return lipgloss.NewStyle().Background(Current().Selection).Foreground(Current().SelectionText)
 }
 
 func TableHeaderStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Background(current.TableHeader).Foreground(current.TableHeaderText)
+	return lipgloss.NewStyle().Background(Current().TableHeader).Foreground(Current().TableHeaderText)
 }
 
 func SectionStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Bold(true).Foreground(current.Secondary)
+	return lipgloss.NewStyle().Bold(true).Foreground(Current().Secondary)
 }
 
 func HighlightStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Bold(true).Foreground(current.Accent)
+	return lipgloss.NewStyle().Bold(true).Foreground(Current().Accent)
 }
 
 func BoldSuccessStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Bold(true).Foreground(current.Success)
+	return lipgloss.NewStyle().Bold(true).Foreground(Current().Success)
 }
 
 func BoldDangerStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Bold(true).Foreground(current.Danger)
+	return lipgloss.NewStyle().Bold(true).Foreground(Current().Danger)
 }
 
 func BoldWarningStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Bold(true).Foreground(current.Warning)
+	return lipgloss.NewStyle().Bold(true).Foreground(Current().Warning)
 }
 
 func BoldPendingStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Bold(true).Foreground(current.Pending)
+	return lipgloss.NewStyle().Bold(true).Foreground(Current().Pending)
 }
 
 // AccentStyle returns a style for accent-colored text (non-bold)
 func AccentStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(current.Accent)
+	return lipgloss.NewStyle().Foreground(Current().Accent)
 }
 
 // MutedStyle returns a style for very dim/muted text
 func MutedStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(current.TextMuted)
+	return lipgloss.NewStyle().Foreground(Current().TextMuted)
 }
 
 // TextStyle returns a style for normal text
 func TextStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(current.Text)
+	return lipgloss.NewStyle().Foreground(Current().Text)
 }
 
 // TextBrightStyle returns a style for emphasized text
 func TextBrightStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(current.TextBright)
+	return lipgloss.NewStyle().Foreground(Current().TextBright)
 }
 
 // SecondaryStyle returns a style for secondary-colored text
 func SecondaryStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(current.Secondary)
+	return lipgloss.NewStyle().Foreground(Current().Secondary)
 }
 
 // BorderStyle returns a style for border-colored text (separators)
 func BorderStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(current.Border)
+	return lipgloss.NewStyle().Foreground(Current().Border)
 }
 
 // PrimaryStyle returns a style for primary-colored text (non-bold)
 func PrimaryStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(current.Primary)
+	return lipgloss.NewStyle().Foreground(Current().Primary)
 }
 
 // InfoStyle returns a style for info states
 func InfoStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(current.Info)
+	return lipgloss.NewStyle().Foreground(Current().Info)
 }
 
 // PendingStyle returns a style for pending states
 func PendingStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(current.Pending)
+	return lipgloss.NewStyle().Foreground(Current().Pending)
 }
 
 func FaintStyle() lipgloss.Style {
@@ -412,37 +412,37 @@ func FaintStyle() lipgloss.Style {
 func BoxStyle() lipgloss.Style {
 	return lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(current.Border).
+		BorderForeground(Current().Border).
 		Padding(0, 1)
 }
 
 func InputStyle() lipgloss.Style {
 	return lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
-		BorderForeground(current.Border).
+		BorderForeground(Current().Border).
 		Padding(0, 1)
 }
 
 // InputFieldStyle returns a style for input fields (filter, command input)
 func InputFieldStyle() lipgloss.Style {
 	return lipgloss.NewStyle().
-		Background(current.Background).
-		Foreground(current.Text).
+		Background(Current().Background).
+		Foreground(Current().Text).
 		Padding(0, 1)
 }
 
 // ReadOnlyBadgeStyle returns a style for the READ-ONLY indicator badge
 func ReadOnlyBadgeStyle() lipgloss.Style {
 	return lipgloss.NewStyle().
-		Background(current.BadgeBackground).
-		Foreground(current.BadgeForeground).
+		Background(Current().BadgeBackground).
+		Foreground(Current().BadgeForeground).
 		Bold(true).
 		Padding(0, 1)
 }
 
 func CellStyle(width, height int) lipgloss.Style {
 	return lipgloss.NewStyle().
-		Foreground(current.Text).
+		Foreground(Current().Text).
 		Width(width).
 		Height(height).
 		Padding(0, 1)
@@ -451,6 +451,6 @@ func CellStyle(width, height int) lipgloss.Style {
 func NewSpinner() spinner.Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(current.Accent)
+	s.Style = lipgloss.NewStyle().Foreground(Current().Accent)
 	return s
 }
