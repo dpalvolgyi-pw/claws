@@ -102,6 +102,11 @@ func (h *HelpView) renderContent() string {
 	out += s.key.Render("Tab") + s.desc.Render("Cycle through suggestions") + "\n"
 	out += s.key.Render("Shift+Tab") + s.desc.Render("Cycle backward") + "\n"
 	out += s.key.Render("Enter") + s.desc.Render("Execute command") + "\n"
+	out += s.key.Render(":q") + s.desc.Render("Quit") + "\n"
+	out += s.key.Render(":login") + s.desc.Render("AWS Console login (claws-login profile)") + "\n"
+	out += s.key.Render(":login <name>") + s.desc.Render("AWS Console login with profile") + "\n"
+	out += s.key.Render(":theme <name>") + s.desc.Render("Change theme (dark/light/nord/dracula/...)") + "\n"
+	out += s.key.Render(":autosave") + s.desc.Render("Toggle config persistence (on/off)") + "\n"
 
 	// Tag Commands
 	out += "\n" + s.section.Render("Tag Commands") + "\n"
@@ -150,11 +155,11 @@ func (h *HelpView) renderContent() string {
 			"  :s3              → S3 buckets\n" +
 			"  :ec2/sec         → Auto-completes to ec2/security-groups\n" +
 			"  :sort Name       → Sort by Name column\n" +
-			"  :sort desc Age   → Sort by Age descending\n" +
 			"  :tag Env=prod    → Filter current view by tag\n" +
 			"  :tags Env=prod   → Browse all resources with tag\n" +
 			"  :diff my-func    → Compare current row with my-func\n" +
-			"  :diff foo bar    → Compare foo with bar",
+			"  :login           → AWS Console login\n" +
+			"  :theme nord      → Switch to Nord theme",
 	)
 
 	return out
