@@ -47,7 +47,7 @@ tasks:
       - |
         echo "Waiting for LocalStack to be ready..."
         for i in $(seq 1 30); do
-          if curl -s --connect-timeout 2 --max-time 5 http://localhost:4566/_localstack/health 2>/dev/null | grep -q '"s3": "running"'; then
+          if curl -s --connect-timeout 2 --max-time 5 http://localhost:4566/_localstack/health 2>/dev/null | grep -qE '"s3": "(available|running)"'; then
             echo "LocalStack started at http://localhost:4566"
             exit 0
           fi
@@ -92,7 +92,18 @@ tasks:
       - ./claws
 
   demo:record:
-    desc: Record demo.gif using VHS + LocalStack (Linux only - --network host required)
+    desc: Record all demos (gif + screenshots) using VHS + LocalStack
+    deps: [build, localstack:start, localstack:demo-setup]
+    preconditions:
+      - sh: '[ "$(uname -s)" = "Linux" ]'
+        msg: "demo:record requires Linux (--network host not supported on macOS/Windows)"
+    cmds:
+      - task: demo:record:gif
+      - task: demo:record:themes
+      - task: demo:record:features
+
+  demo:record:gif:
+    desc: Record demo.gif only
     deps: [build, localstack:start, localstack:demo-setup]
     preconditions:
       - sh: '[ "$(uname -s)" = "Linux" ]'
@@ -101,12 +112,40 @@ tasks:
       - |
         docker run --rm --network host \
           -v "$(pwd)":/vhs \
+          -v "$(pwd)/scripts/demo-aws-config:/root/.aws:ro" \
           -e AWS_ENDPOINT_URL=http://localhost:4566 \
-          -e AWS_ACCESS_KEY_ID=test \
-          -e AWS_SECRET_ACCESS_KEY=test \
-          -e AWS_DEFAULT_REGION=us-east-1 \
           -e AWS_EC2_METADATA_DISABLED=true \
-          ghcr.io/charmbracelet/vhs:v0.10.0 cassette.tape
+          ghcr.io/charmbracelet/vhs docs/tapes/demo.tape
+
+  demo:record:themes:
+    desc: Record theme screenshots only
+    deps: [build, localstack:start, localstack:demo-setup]
+    preconditions:
+      - sh: '[ "$(uname -s)" = "Linux" ]'
+        msg: "demo:record requires Linux (--network host not supported on macOS/Windows)"
+    cmds:
+      - |
+        docker run --rm --network host \
+          -v "$(pwd)":/vhs \
+          -v "$(pwd)/scripts/demo-aws-config:/root/.aws:ro" \
+          -e AWS_ENDPOINT_URL=http://localhost:4566 \
+          -e AWS_EC2_METADATA_DISABLED=true \
+          ghcr.io/charmbracelet/vhs docs/tapes/themes.tape
+
+  demo:record:features:
+    desc: Record feature screenshots only
+    deps: [build, localstack:start, localstack:demo-setup]
+    preconditions:
+      - sh: '[ "$(uname -s)" = "Linux" ]'
+        msg: "demo:record requires Linux (--network host not supported on macOS/Windows)"
+    cmds:
+      - |
+        docker run --rm --network host \
+          -v "$(pwd)":/vhs \
+          -v "$(pwd)/scripts/demo-aws-config:/root/.aws:ro" \
+          -e AWS_ENDPOINT_URL=http://localhost:4566 \
+          -e AWS_EC2_METADATA_DISABLED=true \
+          ghcr.io/charmbracelet/vhs docs/tapes/features.tape
 
   test-localstack:
     desc: Run integration tests with LocalStack

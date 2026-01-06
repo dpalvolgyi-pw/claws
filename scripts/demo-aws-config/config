@@ -1,0 +1,11 @@
+[default]
+region = us-east-1
+endpoint_url = http://localhost:4566
+
+[profile prod]
+region = us-east-1
+endpoint_url = http://localhost:4566
+
+[profile dev]
+region = us-west-2
+endpoint_url = http://localhost:4566

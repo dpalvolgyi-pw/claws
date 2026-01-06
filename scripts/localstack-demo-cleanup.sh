@@ -20,129 +20,98 @@ if [[ "${AWS_ENDPOINT_URL:-}" != "http://localhost:4566" ]]; then
     error "AWS_ENDPOINT_URL must be http://localhost:4566 (got: ${AWS_ENDPOINT_URL:-<not set>})"
 fi
 
-export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-test}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-test}"
-export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-east-1}"
 export AWS_EC2_METADATA_DISABLED=true
+
+ACCOUNTS=("111111111111" "222222222222")
+REGIONS=("us-east-1" "us-west-2" "ap-northeast-1")
 
 aws_cmd() {
     aws --endpoint-url="${AWS_ENDPOINT_URL}" "$@"
 }
 
+cleanup_account_region() {
+    local account="$1"
+    local region="$2"
+    export AWS_ACCESS_KEY_ID="$account"
+    export AWS_DEFAULT_REGION="$region"
+    
+    log "Cleaning $account / $region..."
+    
+    local instances=$(aws_cmd ec2 describe-instances \
+        --filters "Name=tag:Project,Values=claws-demo" "Name=instance-state-name,Values=pending,running,stopping,stopped" \
+        --query 'Reservations[].Instances[].InstanceId' --output text 2>/dev/null || echo "")
+    if [[ -n "$instances" ]]; then
+        for id in $instances; do
+            aws_cmd ec2 terminate-instances --instance-ids "$id" 2>/dev/null && log "  Terminated: $id" || track_error "Failed: $id"
+        done
+        sleep 2
+    fi
+    
+    local sgs=$(aws_cmd ec2 describe-security-groups \
+        --filters "Name=tag:Project,Values=claws-demo" \
+        --query 'SecurityGroups[].GroupId' --output text 2>/dev/null || echo "")
+    for sg in $sgs; do
+        aws_cmd ec2 delete-security-group --group-id "$sg" 2>/dev/null && log "  Deleted SG: $sg" || track_error "Failed SG: $sg"
+    done
+    
+    local subnets=$(aws_cmd ec2 describe-subnets \
+        --filters "Name=tag:Project,Values=claws-demo" \
+        --query 'Subnets[].SubnetId' --output text 2>/dev/null || echo "")
+    for subnet in $subnets; do
+        aws_cmd ec2 delete-subnet --subnet-id "$subnet" 2>/dev/null && log "  Deleted subnet: $subnet" || track_error "Failed subnet: $subnet"
+    done
+    
+    local rts=$(aws_cmd ec2 describe-route-tables \
+        --filters "Name=tag:Project,Values=claws-demo" \
+        --query 'RouteTables[].RouteTableId' --output text 2>/dev/null || echo "")
+    for rt in $rts; do
+        local assocs=$(aws_cmd ec2 describe-route-tables --route-table-ids "$rt" \
+            --query 'RouteTables[0].Associations[?!Main].RouteTableAssociationId' --output text 2>/dev/null || echo "")
+        for assoc in $assocs; do
+            aws_cmd ec2 disassociate-route-table --association-id "$assoc" 2>/dev/null || true
+        done
+        aws_cmd ec2 delete-route-table --route-table-id "$rt" 2>/dev/null && log "  Deleted RT: $rt" || track_error "Failed RT: $rt"
+    done
+    
+    local igws=$(aws_cmd ec2 describe-internet-gateways \
+        --filters "Name=tag:Project,Values=claws-demo" \
+        --query 'InternetGateways[].InternetGatewayId' --output text 2>/dev/null || echo "")
+    for igw in $igws; do
+        local vpc=$(aws_cmd ec2 describe-internet-gateways --internet-gateway-ids "$igw" \
+            --query 'InternetGateways[0].Attachments[0].VpcId' --output text 2>/dev/null || echo "")
+        if [[ -n "$vpc" && "$vpc" != "None" ]]; then
+            aws_cmd ec2 detach-internet-gateway --internet-gateway-id "$igw" --vpc-id "$vpc" 2>/dev/null || true
+        fi
+        aws_cmd ec2 delete-internet-gateway --internet-gateway-id "$igw" 2>/dev/null && log "  Deleted IGW: $igw" || track_error "Failed IGW: $igw"
+    done
+    
+    local vpcs=$(aws_cmd ec2 describe-vpcs \
+        --filters "Name=tag:Project,Values=claws-demo" \
+        --query 'Vpcs[].VpcId' --output text 2>/dev/null || echo "")
+    for vpc in $vpcs; do
+        aws_cmd ec2 delete-vpc --vpc-id "$vpc" 2>/dev/null && log "  Deleted VPC: $vpc" || track_error "Failed VPC: $vpc"
+    done
+}
+
 log "=== claws LocalStack Demo Cleanup ==="
 
-log "Terminating EC2 instances..."
-INSTANCES=$(aws_cmd ec2 describe-instances \
-    --filters "Name=tag:Project,Values=claws-demo" "Name=instance-state-name,Values=pending,running,stopping,stopped" \
-    --query 'Reservations[].Instances[].InstanceId' --output text 2>/dev/null || echo "")
-if [[ -n "$INSTANCES" ]]; then
-    for id in $INSTANCES; do
-        if aws_cmd ec2 terminate-instances --instance-ids "$id" 2>/dev/null; then
-            log "  Terminating: $id"
-        else
-            track_error "Failed to terminate: $id"
-        fi
+for account in "${ACCOUNTS[@]}"; do
+    for region in "${REGIONS[@]}"; do
+        cleanup_account_region "$account" "$region"
     done
-    log "  Waiting for instances to terminate..."
-    for i in $(seq 1 30); do
-        # shellcheck disable=SC2086 # Word splitting intended for multiple IDs
-        REMAINING=$(aws_cmd ec2 describe-instances \
-            --instance-ids $INSTANCES \
-            --filters "Name=instance-state-name,Values=pending,running,shutting-down,stopping,stopped" \
-            --query 'Reservations[].Instances[].InstanceId' --output text 2>/dev/null || echo "")
-        if [[ -z "$REMAINING" ]]; then
-            log "  All instances terminated"
-            break
-        fi
-        if [[ $i -eq 30 ]]; then
-            track_error "Timeout waiting for instances to terminate"
-        fi
-        sleep 1
-    done
-fi
-
-log "Deleting Security Groups..."
-SGS=$(aws_cmd ec2 describe-security-groups \
-    --filters "Name=tag:Project,Values=claws-demo" \
-    --query 'SecurityGroups[].GroupId' --output text 2>/dev/null || echo "")
-for sg in $SGS; do
-    if aws_cmd ec2 delete-security-group --group-id "$sg" 2>/dev/null; then
-        log "  Deleted: $sg"
-    else
-        track_error "Failed to delete SG: $sg"
-    fi
 done
 
-log "Deleting Subnets..."
-SUBNETS=$(aws_cmd ec2 describe-subnets \
-    --filters "Name=tag:Project,Values=claws-demo" \
-    --query 'Subnets[].SubnetId' --output text 2>/dev/null || echo "")
-for subnet in $SUBNETS; do
-    if aws_cmd ec2 delete-subnet --subnet-id "$subnet" 2>/dev/null; then
-        log "  Deleted: $subnet"
-    else
-        track_error "Failed to delete subnet: $subnet"
-    fi
-done
-
-log "Deleting Route Tables..."
-RTS=$(aws_cmd ec2 describe-route-tables \
-    --filters "Name=tag:Project,Values=claws-demo" \
-    --query 'RouteTables[].RouteTableId' --output text 2>/dev/null || echo "")
-for rt in $RTS; do
-    ASSOCS=$(aws_cmd ec2 describe-route-tables --route-table-ids "$rt" \
-        --query 'RouteTables[0].Associations[?!Main].RouteTableAssociationId' --output text 2>/dev/null || echo "")
-    for assoc in $ASSOCS; do
-        aws_cmd ec2 disassociate-route-table --association-id "$assoc" 2>/dev/null || track_error "Failed to disassociate: $assoc"
-    done
-    if aws_cmd ec2 delete-route-table --route-table-id "$rt" 2>/dev/null; then
-        log "  Deleted: $rt"
-    else
-        track_error "Failed to delete RT: $rt"
-    fi
-done
-
-log "Detaching and deleting Internet Gateways..."
-IGWS=$(aws_cmd ec2 describe-internet-gateways \
-    --filters "Name=tag:Project,Values=claws-demo" \
-    --query 'InternetGateways[].InternetGatewayId' --output text 2>/dev/null || echo "")
-for igw in $IGWS; do
-    VPC=$(aws_cmd ec2 describe-internet-gateways --internet-gateway-ids "$igw" \
-        --query 'InternetGateways[0].Attachments[0].VpcId' --output text 2>/dev/null || echo "")
-    if [[ -n "$VPC" && "$VPC" != "None" ]]; then
-        aws_cmd ec2 detach-internet-gateway --internet-gateway-id "$igw" --vpc-id "$VPC" 2>/dev/null || track_error "Failed to detach IGW: $igw"
-    fi
-    if aws_cmd ec2 delete-internet-gateway --internet-gateway-id "$igw" 2>/dev/null; then
-        log "  Deleted: $igw"
-    else
-        track_error "Failed to delete IGW: $igw"
-    fi
-done
-
-log "Deleting VPCs..."
-VPCS=$(aws_cmd ec2 describe-vpcs \
-    --filters "Name=tag:Project,Values=claws-demo" \
-    --query 'Vpcs[].VpcId' --output text 2>/dev/null || echo "")
-for vpc in $VPCS; do
-    if aws_cmd ec2 delete-vpc --vpc-id "$vpc" 2>/dev/null; then
-        log "  Deleted: $vpc"
-    else
-        track_error "Failed to delete VPC: $vpc"
-    fi
-done
+export AWS_ACCESS_KEY_ID="${ACCOUNTS[0]}"
+export AWS_DEFAULT_REGION="us-east-1"
 
 log "Deleting S3 buckets..."
 for bucket in claws-demo-assets claws-demo-logs claws-demo-backups; do
-    if aws_cmd s3 rb "s3://${bucket}" --force 2>/dev/null; then
-        log "  Deleted: $bucket"
-    else
-        track_error "Failed to delete bucket: $bucket"
-    fi
+    aws_cmd s3 rb "s3://${bucket}" --force 2>/dev/null && log "  Deleted: $bucket" || true
 done
 
 if [[ $ERRORS -gt 0 ]]; then
     warn "=== Cleanup completed with $ERRORS error(s) ==="
-    exit 1
 else
     log "=== Cleanup complete ==="
 fi

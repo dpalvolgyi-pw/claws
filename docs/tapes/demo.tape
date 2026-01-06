@@ -1,6 +1,9 @@
-Output demo.gif
+# Demo recording for claws - run via: task demo:record:gif
+# Requires LocalStack running with demo data
 
-Set FontSize 20
+Output docs/images/demo.gif
+
+Set FontSize 16
 Set Width 1920
 Set Height 1080
 Set TypingSpeed 0.08
@@ -22,7 +25,7 @@ Sleep 1.5s
 Enter
 Sleep 2s
 
-Type "/demo"
+Type "/public"
 Sleep 1s
 Enter
 Sleep 2s
