@@ -36,7 +36,7 @@ A terminal UI for AWS resource management
 ### Homebrew (macOS/Linux)
 
 ```bash
-brew install --cask clawscli/tap/claws
+brew install clawscli/tap/claws
 ```
 
 ### Install Script (macOS/Linux)
