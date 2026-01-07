@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
@@ -27,6 +28,11 @@ const (
 	maxLogBufferSize       = 1000
 	logFetchLimit          = 100
 	viewportHeaderOffset   = 4 // header(1) + status(2) + spacing(1)
+
+	// Filter UI constants
+	filterInputPadding     = 4  // Padding for filter input width
+	minFilterWidth         = 10 // Minimum filter input width
+	maxFilterDisplayLength = 20 // Maximum filter text length in status line
 )
 
 type LogView struct {
@@ -47,6 +53,15 @@ type LogView struct {
 	lastEventTime   int64
 	oldestEventTime int64
 	pollInterval    time.Duration
+
+	// Size tracking
+	width  int
+	height int
+
+	// Filter state
+	filterInput  textinput.Model
+	filterActive bool
+	filterText   string // Filter text (client-side substring match)
 }
 
 type logEntry struct {
@@ -75,6 +90,11 @@ func newLogViewStyles() logViewStyles {
 }
 
 func NewLogView(ctx context.Context, logGroupName string) *LogView {
+	ti := textinput.New()
+	ti.Placeholder = "Filter logs..."
+	ti.Prompt = "/"
+	ti.CharLimit = 200
+
 	return &LogView{
 		ctx:          ctx,
 		logGroupName: logGroupName,
@@ -83,6 +103,7 @@ func NewLogView(ctx context.Context, logGroupName string) *LogView {
 		logs:         make([]logEntry, 0, initialLogBufferSize),
 		loading:      true,
 		pollInterval: defaultLogPollInterval,
+		filterInput:  ti,
 	}
 }
 
@@ -295,7 +316,16 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return v, v.fetchLogsCmd()
 
 	case tea.KeyPressMsg:
+		// Handle filter input if active
+		if v.filterActive {
+			return v.handleFilterInput(msg)
+		}
+
 		switch msg.String() {
+		case "/":
+			v.filterActive = true
+			v.filterInput.Focus()
+			return v, textinput.Blink
 		case "space":
 			v.paused = !v.paused
 			if !v.paused {
@@ -313,6 +343,16 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return v, nil
 		case "c":
+			// Clear filter if active, otherwise clear buffer
+			if v.filterText != "" {
+				v.filterText = ""
+				v.filterInput.SetValue("")
+				if v.vp.Ready {
+					v.updateViewportContent()
+					v.SetSize(v.width, v.height) // Recalculate viewport height
+				}
+				return v, nil
+			}
 			v.logs = v.logs[:0]
 			v.oldestEventTime = 0
 			if v.vp.Ready {
@@ -349,14 +389,56 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return v, nil
 }
 
+func (v *LogView) matchesFilter(entry logEntry) bool {
+	if v.filterText == "" {
+		return true
+	}
+	filter := strings.ToLower(v.filterText)
+	msg := strings.ToLower(entry.message)
+	return strings.Contains(msg, filter)
+}
+
 func (v *LogView) updateViewportContent() {
 	var sb strings.Builder
+
 	for _, entry := range v.logs {
+		if !v.matchesFilter(entry) {
+			continue
+		}
+
 		ts := v.styles.timestamp.Render(entry.timestamp.Format("15:04:05.000"))
 		msg := v.styles.message.Render(entry.message)
 		sb.WriteString(fmt.Sprintf("%s %s\n", ts, msg))
 	}
 	v.vp.Model.SetContent(sb.String())
+}
+
+func (v *LogView) handleFilterInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		v.filterActive = false
+		v.filterInput.Blur()
+		return v, nil
+	case "enter":
+		v.filterActive = false
+		v.filterInput.Blur()
+		v.filterText = v.filterInput.Value()
+		if v.vp.Ready {
+			v.updateViewportContent()
+		}
+		return v, nil
+	default:
+		var cmd tea.Cmd
+		v.filterInput, cmd = v.filterInput.Update(msg)
+
+		// Apply filter in real-time as user types
+		v.filterText = v.filterInput.Value()
+		if v.vp.Ready {
+			v.updateViewportContent()
+		}
+
+		return v, cmd
+	}
 }
 
 func (v *LogView) ViewString() string {
@@ -373,11 +455,28 @@ func (v *LogView) ViewString() string {
 	sb.WriteString(v.styles.header.Render("📜 " + title))
 	sb.WriteString("\n")
 
+	// Filter UI
+	if v.filterActive {
+		sb.WriteString(ui.InputFieldStyle().Render(v.filterInput.View()))
+		sb.WriteString("\n")
+	} else if v.filterText != "" {
+		sb.WriteString(ui.AccentStyle().Render(fmt.Sprintf("🔍 filter: %s", v.filterText)))
+		sb.WriteString("\n")
+	}
+
 	if v.paused {
 		sb.WriteString(v.styles.paused.Render("⏸ PAUSED"))
 		sb.WriteString(" ")
 	}
-	sb.WriteString(v.styles.dim.Render(fmt.Sprintf("(%d lines)", len(v.logs))))
+
+	// Show filtered/total count
+	totalCount := len(v.logs)
+	displayedCount := v.getDisplayedCount()
+	if v.filterText != "" && displayedCount < totalCount {
+		sb.WriteString(v.styles.dim.Render(fmt.Sprintf("(%d/%d lines)", displayedCount, totalCount)))
+	} else {
+		sb.WriteString(v.styles.dim.Render(fmt.Sprintf("(%d lines)", totalCount)))
+	}
 	sb.WriteString("\n\n")
 
 	if v.loading {
@@ -400,19 +499,61 @@ func (v *LogView) ViewString() string {
 	return sb.String()
 }
 
+func (v *LogView) getDisplayedCount() int {
+	if v.filterText == "" {
+		return len(v.logs)
+	}
+	count := 0
+	for _, entry := range v.logs {
+		if v.matchesFilter(entry) {
+			count++
+		}
+	}
+	return count
+}
+
 func (v *LogView) View() tea.View {
 	return tea.NewView(v.ViewString())
 }
 
 func (v *LogView) SetSize(width, height int) tea.Cmd {
-	viewportHeight := height - viewportHeaderOffset
+	v.width = width
+	v.height = height
+
+	headerOffset := viewportHeaderOffset
+	if v.filterActive || v.filterText != "" {
+		headerOffset++ // Extra line for filter UI
+	}
+	viewportHeight := height - headerOffset
 	v.vp.SetSize(width, viewportHeight)
+
+	// Set filter input width with minimum check
+	filterWidth := width - filterInputPadding
+	if filterWidth < minFilterWidth {
+		filterWidth = minFilterWidth
+	}
+	v.filterInput.SetWidth(filterWidth)
+
 	v.updateViewportContent()
 	return nil
 }
 
 func (v *LogView) StatusLine() string {
-	status := "Space:pause/resume p:older g/G:top/bottom c:clear Esc:back"
+	if v.filterActive {
+		return "Esc:cancel Enter:done"
+	}
+
+	status := "Space:pause/resume p:older g/G:top/bottom c:clear /:filter Esc:back"
+
+	if v.filterText != "" {
+		filterDisplay := v.filterText
+		runes := []rune(filterDisplay)
+		if len(runes) > maxFilterDisplayLength {
+			filterDisplay = string(runes[:maxFilterDisplayLength-3]) + "..."
+		}
+		status = fmt.Sprintf("🔍 %s • ", filterDisplay) + status
+	}
+
 	if v.paused {
 		return "⏸ PAUSED • " + status
 	}
@@ -420,4 +561,8 @@ func (v *LogView) StatusLine() string {
 		return fmt.Sprintf("⏳ THROTTLED (%ds) • %s", int(v.pollInterval.Seconds()), status)
 	}
 	return "▶ STREAMING • " + status
+}
+
+func (v *LogView) HasActiveInput() bool {
+	return v.filterActive
 }
