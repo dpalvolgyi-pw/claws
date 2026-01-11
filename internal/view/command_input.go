@@ -18,8 +18,10 @@ import (
 )
 
 const (
-	commandInputWidth    = 30
-	commandInputWidthMax = 50
+	commandInputWidth1 = 15
+	commandInputWidth2 = 30
+	commandInputWidth3 = 60
+	commandInputWidth4 = 90
 )
 
 // CommandInput handles command mode input
@@ -77,7 +79,7 @@ func NewCommandInput(ctx context.Context, reg *registry.Registry) *CommandInput 
 	ti.Placeholder = "service/resource"
 	ti.Prompt = ":"
 	ti.CharLimit = 150
-	ti.SetWidth(commandInputWidth)
+	ti.SetWidth(commandInputWidth1)
 
 	return &CommandInput{
 		ctx:       ctx,
@@ -147,6 +149,7 @@ func (c *CommandInput) Update(msg tea.Msg) (tea.Cmd, *NavigateMsg) {
 					c.textInput.SetValue(c.suggestions[c.suggIdx])
 					c.suggIdx = (c.suggIdx + 1) % len(c.suggestions)
 				}
+				c.updateWidth()
 			}
 			return nil, nil
 
@@ -170,6 +173,7 @@ func (c *CommandInput) Update(msg tea.Msg) (tea.Cmd, *NavigateMsg) {
 					c.textInput.Reset()
 					c.textInput.SetValue(c.suggestions[c.suggIdx])
 				}
+				c.updateWidth()
 			}
 			return nil, nil
 		}
@@ -181,13 +185,7 @@ func (c *CommandInput) Update(msg tea.Msg) (tea.Cmd, *NavigateMsg) {
 	// Update suggestions on input change
 	c.updateSuggestions()
 
-	// Dynamic width: expand when input exceeds default width
-	inputLen := len(c.textInput.Value())
-	if inputLen > commandInputWidth {
-		c.textInput.SetWidth(commandInputWidthMax)
-	} else {
-		c.textInput.SetWidth(commandInputWidth)
-	}
+	c.updateWidth()
 
 	return cmd, nil
 }
@@ -195,6 +193,25 @@ func (c *CommandInput) Update(msg tea.Msg) (tea.Cmd, *NavigateMsg) {
 func (c *CommandInput) updateSuggestions() {
 	c.suggestions = c.GetSuggestions()
 	c.suggIdx = 0
+}
+
+// updateWidth adjusts input width based on current input length (4-stage: 15 → 30 → 60 → 90)
+func (c *CommandInput) updateWidth() {
+	inputLen := len(c.textInput.Value())
+	var newWidth int
+	switch {
+	case inputLen > commandInputWidth3:
+		newWidth = commandInputWidth4
+	case inputLen > commandInputWidth2:
+		newWidth = commandInputWidth3
+	case inputLen > commandInputWidth1:
+		newWidth = commandInputWidth2
+	default:
+		newWidth = commandInputWidth1
+	}
+	c.textInput.SetWidth(newWidth)
+	// Re-set value to reset display offset after width change
+	c.textInput.SetValue(c.textInput.Value())
 }
 
 // View renders the command input
