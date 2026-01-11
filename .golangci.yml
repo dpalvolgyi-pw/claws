@@ -1,65 +1,75 @@
+version: "2"
 run:
-  timeout: 5m
   tests: true
-
-issues:
-  exclude-dirs:
-    - vendor
-  exclude-files:
-    - ".*\\.pb\\.go"
-    - ".*\\.gen\\.go"
-  exclude-use-default: false
-  max-issues-per-linter: 0
-  max-same-issues: 0
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - goconst
-        - errorlint
-        - errcheck
-    - linters:
-        - goconst
-      source: "case \".*\":|return \".*\"|== \".*\""
-    - linters:
-        - staticcheck
-      text: "SA1019.*deprecated"
-      path: "custom/.*/.*\\.go"
-
 linters:
-  disable-all: true
+  default: none
   enable:
+    - bodyclose
     - errcheck
-    - gosimple
+    - errorlint
+    - goconst
+    - gosec
     - govet
     - ineffassign
+    - misspell
+    - noctx
     - staticcheck
-    - typecheck
+    - unconvert
     - unused
+  settings:
+    goconst:
+      min-len: 5
+      min-occurrences: 5
+    gosec:
+      excludes:
+        - G104
+        - G204
+        - G304
+        - G115
+        - G301
+        - G101
+        - G306
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - errcheck
+          - errorlint
+          - goconst
+        path: _test\.go
+      - linters:
+          - goconst
+        source: case ".*":|return ".*"|== ".*"
+      - linters:
+          - staticcheck
+        path: custom/.*/.*\.go
+        text: SA1019.*deprecated
+    paths:
+      - .*\.pb\.go
+      - .*\.gen\.go
+      - vendor
+      - third_party$
+      - builtin$
+      - examples$
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
     - gofmt
     - goimports
-    - misspell
-    - errorlint
-    - unconvert
-    - goconst
-    # Security linters
-    - gosec
-    - bodyclose
-    - noctx
-
-linters-settings:
-  goimports:
-    local-prefixes: github.com/clawscli/claws
-  gofmt:
-    simplify: true
-  goconst:
-    min-len: 5
-    min-occurrences: 5
-  gosec:
-    excludes:
-      - G104  # Audit errors not checked (covered by errcheck)
-      - G204  # Subprocess with variable - intentional for CLI actions
-      - G304  # File path from variable - intentional for log/config
-      - G115  # int->int32 conversion - pageSize always < 1000
-      - G301  # Directory permissions - test only
-      - G101  # Hardcoded credentials - test examples only
-      - G306  # WriteFile permissions 0644 - standard for generated Go source
+  settings:
+    gofmt:
+      simplify: true
+    goimports:
+      local-prefixes:
+        - github.com/clawscli/claws
+  exclusions:
+    generated: lax
+    paths:
+      - .*\.pb\.go
+      - .*\.gen\.go
+      - vendor
+      - third_party$
+      - builtin$
+      - examples$

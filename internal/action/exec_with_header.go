@@ -2,6 +2,7 @@ package action
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -66,7 +67,7 @@ func (e *SimpleExec) Run() error {
 		stderr = os.Stderr
 	}
 
-	cmd := exec.Command("/bin/sh", "-c", e.Command)
+	cmd := exec.CommandContext(context.Background(), "/bin/sh", "-c", e.Command)
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
@@ -164,7 +165,7 @@ func (e *ExecWithHeader) Run() error {
 		return ErrEmptyCommand
 	}
 
-	cmd := exec.Command("/bin/sh", "-c", e.Command)
+	cmd := exec.CommandContext(context.Background(), "/bin/sh", "-c", e.Command)
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr

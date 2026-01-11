@@ -1,6 +1,7 @@
 package view
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os/exec"
@@ -231,7 +232,7 @@ type ssoLoginCmd struct {
 }
 
 func (s *ssoLoginCmd) Run() error {
-	cmd := exec.Command("aws", "sso", "login", "--profile", s.profileName)
+	cmd := exec.CommandContext(context.Background(), "aws", "sso", "login", "--profile", s.profileName)
 	cmd.Stdin = s.stdin
 	cmd.Stdout = s.stdout
 	cmd.Stderr = s.stderr

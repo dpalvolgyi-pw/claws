@@ -519,7 +519,7 @@ func (c *ChatOverlay) handleToolExecute(msg chatToolExecuteMsg) (tea.Model, tea.
 	for _, tu := range msg.toolUses {
 		// Check tool call limit before executing each tool
 		if c.toolCallCount >= maxCalls {
-			c.err = fmt.Errorf("Tool call limit reached (%d calls). Start new query to continue.", maxCalls)
+			c.err = fmt.Errorf("tool call limit reached (%d calls), start new query to continue", maxCalls)
 			c.isStreaming = false
 			c.updateViewport()
 			return c, nil

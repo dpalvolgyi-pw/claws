@@ -218,7 +218,7 @@ func (d *BucketDAO) fetchTags(ctx context.Context, client *s3.Client, bucket str
 			tags[*tag.Key] = *tag.Value
 		}
 	}
-	r.BaseResource.Tags = tags
+	r.Tags = tags
 }
 
 func (d *BucketDAO) Delete(ctx context.Context, id string) error {

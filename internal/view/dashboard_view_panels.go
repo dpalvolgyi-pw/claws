@@ -177,9 +177,10 @@ func (d *DashboardView) renderSecurityContent(contentWidth, contentHeight int, f
 	} else if len(d.secItems) > 0 {
 		var critical, high int
 		for _, item := range d.secItems {
-			if item.severity == "CRITICAL" {
+			switch item.severity {
+			case "CRITICAL":
 				critical++
-			} else if item.severity == "HIGH" {
+			case "HIGH":
 				high++
 			}
 		}

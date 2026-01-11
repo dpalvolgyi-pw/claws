@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"go/format"
 	"os"
@@ -63,7 +64,7 @@ func main() {
 }
 
 func verifyBuild(projectRoot string) error {
-	cmd := exec.Command("go", "build", "./cmd/claws")
+	cmd := exec.CommandContext(context.Background(), "go", "build", "./cmd/claws")
 	cmd.Dir = projectRoot
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

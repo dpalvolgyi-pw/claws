@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"os/exec"
 	"strings"
@@ -14,14 +15,14 @@ import (
 // TestPTYEscHandling runs the actual app in a PTY and tests esc handling
 func TestPTYEscHandling(t *testing.T) {
 	// Build the app first
-	buildCmd := exec.Command("go", "build", "-o", "/tmp/claws-test", "../../cmd/claws")
+	buildCmd := exec.CommandContext(context.Background(), "go", "build", "-o", "/tmp/claws-test", "../../cmd/claws")
 	if out, err := buildCmd.CombinedOutput(); err != nil {
 		t.Fatalf("Failed to build: %v\n%s", err, out)
 	}
 	defer func() { _ = os.Remove("/tmp/claws-test") }()
 
 	// Run the app in a PTY
-	cmd := exec.Command("/tmp/claws-test")
+	cmd := exec.CommandContext(context.Background(), "/tmp/claws-test")
 	ptmx, err := pty.Start(cmd)
 	if err != nil {
 		t.Fatalf("Failed to start PTY: %v", err)

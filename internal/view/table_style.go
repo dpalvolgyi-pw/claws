@@ -33,10 +33,10 @@ func NewTableStyleFunc(widths []int, cursor int) func(row, col int) lipgloss.Sty
 		if col >= numCols {
 			return ui.NoStyle()
 		}
-		switch {
-		case row == table.HeaderRow:
+		switch row {
+		case table.HeaderRow:
 			return headerStyles[col]
-		case row == cursor:
+		case cursor:
 			return selectedStyles[col]
 		default:
 			return normalStyles[col]

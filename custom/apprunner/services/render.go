@@ -109,11 +109,12 @@ func (r *ServiceRenderer) RenderDetail(resource dao.Resource) string {
 	if sourceType := svc.SourceType(); sourceType != "" {
 		d.Section("Source Configuration")
 		d.Field("Source Type", sourceType)
-		if sourceType == "IMAGE_REPOSITORY" {
+		switch sourceType {
+		case "IMAGE_REPOSITORY":
 			if img := svc.ImageIdentifier(); img != "" {
 				d.Field("Image", img)
 			}
-		} else if sourceType == "CODE_REPOSITORY" {
+		case "CODE_REPOSITORY":
 			if repo := svc.RepositoryUrl(); repo != "" {
 				d.Field("Repository URL", repo)
 			}

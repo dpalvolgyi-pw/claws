@@ -487,13 +487,14 @@ func (d *DashboardView) ViewString() string {
 	opsFocusRow := -1
 	secFocusRow := -1
 	optFocusRow := -1
-	if d.focusedPanel == panelCost {
+	switch d.focusedPanel {
+	case panelCost:
 		costFocusRow = d.focusedRow
-	} else if d.focusedPanel == panelOperations {
+	case panelOperations:
 		opsFocusRow = d.focusedRow
-	} else if d.focusedPanel == panelSecurity {
+	case panelSecurity:
 		secFocusRow = d.focusedRow
-	} else if d.focusedPanel == panelOptimization {
+	case panelOptimization:
 		optFocusRow = d.focusedRow
 	}
 
