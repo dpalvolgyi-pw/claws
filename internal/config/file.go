@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
 	"gopkg.in/yaml.v3"
 
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/log"
 )
 
@@ -27,7 +29,55 @@ const (
 	DefaultAIMaxToolCallsPerQuery  = 50
 )
 
+var (
+	customConfigPath string
+	configPathMu     sync.RWMutex
+)
+
+// expandTilde expands ~ to user home directory.
+func expandTilde(path string) (string, error) {
+	if strings.HasPrefix(path, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("expand ~: %w", err)
+		}
+		return filepath.Join(home, path[2:]), nil
+	}
+	return path, nil
+}
+
+// SetConfigPath sets custom config file path. Must be called before File().
+// Returns error if file doesn't exist or isn't readable.
+func SetConfigPath(path string) error {
+	expanded, err := expandTilde(path)
+	if err != nil {
+		return apperrors.Wrap(err, "config file", "path", path)
+	}
+	if _, err := os.Stat(expanded); err != nil {
+		return apperrors.Wrap(err, "config file", "path", expanded)
+	}
+	configPathMu.Lock()
+	customConfigPath = expanded
+	configPathMu.Unlock()
+	return nil
+}
+
+// GetConfigPath returns the current custom config path (empty if using default).
+func GetConfigPath() string {
+	configPathMu.RLock()
+	defer configPathMu.RUnlock()
+	return customConfigPath
+}
+
 func ConfigDir() (string, error) {
+	configPathMu.RLock()
+	custom := customConfigPath
+	configPathMu.RUnlock()
+
+	if custom != "" {
+		return filepath.Dir(custom), nil
+	}
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("get home dir: %w", err)
@@ -36,6 +86,14 @@ func ConfigDir() (string, error) {
 }
 
 func ConfigPath() (string, error) {
+	configPathMu.RLock()
+	custom := customConfigPath
+	configPathMu.RUnlock()
+
+	if custom != "" {
+		return custom, nil
+	}
+
 	dir, err := ConfigDir()
 	if err != nil {
 		return "", err
