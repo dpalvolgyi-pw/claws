@@ -2,7 +2,10 @@ package view
 
 import (
 	"context"
+	"strings"
 	"testing"
+
+	"github.com/clawscli/claws/internal/config"
 )
 
 func TestSettingsView_New(t *testing.T) {
@@ -62,7 +65,7 @@ func TestSettingsView_ThemeChanged(t *testing.T) {
 	sv := NewSettingsView(context.Background())
 	sv.SetSize(80, 24)
 
-	originalStyles := sv.styles
+	contentBefore := sv.vp.Model.View()
 
 	model, cmd := sv.Update(ThemeChangedMsg{})
 	if cmd != nil {
@@ -74,7 +77,95 @@ func TestSettingsView_ThemeChanged(t *testing.T) {
 		t.Fatal("Update should return *SettingsView")
 	}
 
-	if &updated.styles == &originalStyles {
-		t.Error("styles should be regenerated on ThemeChangedMsg")
+	contentAfter := updated.vp.Model.View()
+	if contentAfter == "" {
+		t.Error("content should be regenerated on ThemeChangedMsg")
+	}
+
+	if contentBefore != contentAfter {
+		t.Log("content was regenerated (styles may have changed)")
+	}
+}
+
+func TestSettingsView_BuildContent(t *testing.T) {
+	sv := NewSettingsView(context.Background())
+	sv.SetSize(80, 24)
+
+	content := sv.buildContent()
+
+	expectedSections := []string{
+		"Config File",
+		"Runtime",
+		"Startup",
+		"Theme",
+		"Timeouts",
+		"Concurrency",
+		"CloudWatch",
+		"Navigation",
+		"Autosave",
+		"AI",
+	}
+
+	for _, section := range expectedSections {
+		if !strings.Contains(content, section) {
+			t.Errorf("buildContent() should contain section %q", section)
+		}
+	}
+}
+
+func TestSettingsView_GetThemeOverrides_Empty(t *testing.T) {
+	sv := NewSettingsView(context.Background())
+
+	overrides := sv.getThemeOverrides(config.ThemeConfig{})
+
+	if len(overrides) != 0 {
+		t.Errorf("getThemeOverrides() with empty config should return empty slice, got %d items", len(overrides))
+	}
+}
+
+func TestSettingsView_GetThemeOverrides_WithOverrides(t *testing.T) {
+	sv := NewSettingsView(context.Background())
+
+	theme := config.ThemeConfig{
+		Primary:   "#ff0000",
+		Secondary: "#00ff00",
+	}
+	overrides := sv.getThemeOverrides(theme)
+
+	if len(overrides) != 2 {
+		t.Errorf("getThemeOverrides() should return 2 overrides, got %d", len(overrides))
+	}
+
+	if !strings.Contains(overrides[0], "Primary") {
+		t.Errorf("first override should contain 'Primary', got %q", overrides[0])
+	}
+}
+
+func TestSettingsView_FormatProfiles_Empty(t *testing.T) {
+	sv := NewSettingsView(context.Background())
+
+	result := sv.formatProfiles(nil)
+
+	if result != noneValue {
+		t.Errorf("formatProfiles(nil) should return %q, got %q", noneValue, result)
+	}
+
+	result = sv.formatProfiles([]config.ProfileSelection{})
+	if result != noneValue {
+		t.Errorf("formatProfiles([]) should return %q, got %q", noneValue, result)
+	}
+}
+
+func TestSettingsView_GetProfileIDs(t *testing.T) {
+	sv := NewSettingsView(context.Background())
+
+	ids := sv.getProfileIDs(nil)
+	if len(ids) != 0 {
+		t.Errorf("getProfileIDs(nil) should return empty slice, got %d items", len(ids))
+	}
+
+	ids = sv.getProfileIDs([]config.ProfileSelection{})
+	if len(ids) != 0 {
+		t.Errorf("getProfileIDs([]) should return empty slice, got %d items", len(ids))
 	}
 }

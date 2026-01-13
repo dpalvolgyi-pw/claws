@@ -97,7 +97,7 @@ func (v *SettingsView) buildContent() string {
 	cfg := config.File()
 	globalCfg := config.Global()
 
-	separatorWidth := ModalWidthSettings - settingsSeparatorInset
+	separatorWidth := max(0, ModalWidthSettings-settingsSeparatorInset)
 	separator := v.styles.separator.Render("  " + strings.Repeat("─", separatorWidth))
 
 	// Section 1: Config File
