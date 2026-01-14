@@ -14,11 +14,15 @@ import (
 )
 
 const (
-	// headerFixedLines is the fixed number of content lines in the header panel
-	// 1: context line, 1: separator, 3: summary field rows
-	headerFixedLines = 5
-	// maxFieldValueWidth is the maximum width for a single field value before truncation
-	maxFieldValueWidth = 30
+	// headerFixedLines: 2 profile/region + 1 separator + 2 summary rows
+	headerFixedLines     = 5
+	maxFieldValueWidth   = 30
+	headerPanelPadding   = 6
+	minAvailableWidth    = 40
+	profileTruncateWidth = 20
+	// profileWidthRatio: profile gets 2/3 of remaining width, region gets 1/3 (compact mode)
+	profileWidthRatio = 2
+	regionWidthRatio  = 3
 )
 
 // HeaderPanel renders the fixed header panel at the top of resource views
@@ -55,71 +59,203 @@ func NewHeaderPanel() *HeaderPanel {
 	}
 }
 
-func (h *HeaderPanel) renderContextLine(service, resourceType string) string {
+func (h *HeaderPanel) renderProfileAccountLine() string {
 	cfg := config.Global()
 	s := h.styles
 
-	var profileDisplay, accountDisplay string
+	labelStr := s.label.Render("Profile: ")
+	labelWidth := lipgloss.Width(labelStr)
+	availableWidth := h.width - headerPanelPadding - labelWidth
+
+	var profileWithAccount string
 	if cfg.IsMultiProfile() {
 		selections := cfg.Selections()
-		profileDisplay = formatMultiProfiles(selections)
-		accountDisplay = formatMultiAccounts(selections, cfg.AccountIDs())
+		profileWithAccount = formatProfilesWithAccounts(selections, cfg.AccountIDs(), s.value, ui.DangerStyle(), availableWidth)
 	} else {
-		profileDisplay = cfg.Selection().DisplayName()
-		accountDisplay = cmp.Or(cfg.AccountID(), "-")
+		name := cfg.Selection().DisplayName()
+		accID := cmp.Or(cfg.AccountID(), "-")
+		profileWithAccount = formatSingleProfile(name, accID, s.value, 0)
 	}
 
-	regions := cfg.Regions()
-	regionDisplay := cmp.Or(strings.Join(regions, ", "), "-")
+	return labelStr + profileWithAccount
+}
 
-	line := s.label.Render("Profile: ") + s.value.Render(profileDisplay) +
-		s.dim.Render("  │  ") +
-		s.label.Render("Account: ") + s.value.Render(accountDisplay) +
-		s.dim.Render("  │  ") +
-		s.label.Render("Region: ") + s.value.Render(regionDisplay)
+// renderRegionServiceLine renders line 2: Region on left, Service›Type right-aligned
+func (h *HeaderPanel) renderRegionServiceLine(service, resourceType string) string {
+	cfg := config.Global()
+	s := h.styles
 
+	labelStr := s.label.Render("Region: ")
+	labelWidth := lipgloss.Width(labelStr)
+
+	availableWidth := max(h.width-headerPanelPadding, minAvailableWidth)
+
+	var rightPart string
+	rightWidth := 0
 	if service != "" {
 		displayName := registry.Global.GetDisplayName(service)
-		line += s.dim.Render("  │  ") +
-			s.accent.Render(displayName) +
+		rightPart = s.accent.Render(displayName) +
 			s.dim.Render(" › ") +
 			s.accent.Render(resourceType)
+		rightWidth = lipgloss.Width(rightPart)
 	}
 
-	return line
+	minPadding := 2
+	regionMaxWidth := availableWidth - labelWidth - rightWidth - minPadding
+	regionPart := formatRegions(cfg.Regions(), s.value, regionMaxWidth)
+	leftPart := labelStr + regionPart
+
+	if service == "" {
+		return leftPart
+	}
+
+	leftWidth := lipgloss.Width(leftPart)
+	padding := max(minPadding, availableWidth-leftWidth-rightWidth)
+
+	return leftPart + strings.Repeat(" ", padding) + rightPart
 }
 
-func formatMultiProfiles(selections []config.ProfileSelection) string {
-	const maxShow = 2
-	if len(selections) <= maxShow {
-		names := make([]string, len(selections))
-		for i, sel := range selections {
-			names[i] = sel.DisplayName()
+// formatProfilesWithAccounts formats profiles with account IDs, truncating with (+N) suffix when they don't all fit.
+// Note: The first profile is always shown regardless of maxWidth to ensure at least one item is visible.
+func formatProfilesWithAccounts(selections []config.ProfileSelection, accountIDs map[string]string, valueStyle, dangerStyle lipgloss.Style, maxWidth int) string {
+	if len(selections) == 0 {
+		return valueStyle.Render("-")
+	}
+
+	separator := valueStyle.Render(", ")
+	sepWidth := lipgloss.Width(separator)
+
+	if maxWidth <= 0 && len(selections) > 1 {
+		first := selections[0]
+		name := first.DisplayName()
+		accID := accountIDs[first.ID()]
+
+		var firstPart string
+		if accID == "" || accID == "-" {
+			firstPart = valueStyle.Render(name+" ") + dangerStyle.Render("(-)")
+		} else {
+			firstPart = valueStyle.Render(name + " (" + accID + ")")
 		}
-		return strings.Join(names, ", ")
+
+		suffix := valueStyle.Render("(+" + strconv.Itoa(len(selections)-1) + ")")
+		return firstPart + separator + suffix
 	}
-	names := make([]string, maxShow)
-	for i := range maxShow {
-		names[i] = selections[i].DisplayName()
+
+	parts := make([]string, 0, len(selections))
+	currentWidth := 0
+
+	for i, sel := range selections {
+		name := sel.DisplayName()
+		accID := accountIDs[sel.ID()]
+
+		var part string
+		if accID == "" || accID == "-" {
+			part = valueStyle.Render(name+" ") + dangerStyle.Render("(-)")
+		} else {
+			part = valueStyle.Render(name + " (" + accID + ")")
+		}
+
+		partWidth := lipgloss.Width(part)
+
+		if maxWidth > 0 && len(parts) > 0 {
+			// remainingAfter = items AFTER current (not including current)
+			remainingAfter := len(selections) - i - 1
+			suffixWidth := 0
+			if remainingAfter > 0 {
+				// +1 because suffix shows total skipped count (current + remaining)
+				suffixWidth = lipgloss.Width("(+" + strconv.Itoa(remainingAfter+1) + ")")
+			}
+
+			neededWidth := currentWidth + sepWidth + partWidth
+			if remainingAfter > 0 {
+				neededWidth += sepWidth + suffixWidth
+			}
+
+			if neededWidth > maxWidth {
+				skipped := len(selections) - i
+				parts = append(parts, valueStyle.Render("(+"+strconv.Itoa(skipped)+")"))
+				break
+			}
+		}
+
+		if len(parts) > 0 {
+			currentWidth += sepWidth
+		}
+		parts = append(parts, part)
+		currentWidth += partWidth
 	}
-	return strings.Join(names, ", ") + " (+" + strconv.Itoa(len(selections)-maxShow) + ")"
+
+	return strings.Join(parts, separator)
 }
 
-func formatMultiAccounts(selections []config.ProfileSelection, accountIDs map[string]string) string {
-	const maxShow = 2
-	accounts := make([]string, 0, len(selections))
-	for _, sel := range selections {
-		if acc := accountIDs[sel.ID()]; acc != "" {
-			accounts = append(accounts, acc)
+// formatRegions formats regions with (+N) suffix when they don't all fit.
+// Note: The first region is always shown regardless of maxWidth to ensure at least one item is visible.
+func formatRegions(regions []string, valueStyle lipgloss.Style, maxWidth int) string {
+	if len(regions) == 0 {
+		return valueStyle.Render("-")
+	}
+
+	if len(regions) == 1 {
+		return valueStyle.Render(regions[0])
+	}
+
+	if maxWidth <= 0 {
+		separator := valueStyle.Render(", ")
+		return valueStyle.Render(regions[0]) + separator + valueStyle.Render("(+"+strconv.Itoa(len(regions)-1)+")")
+	}
+
+	separator := valueStyle.Render(", ")
+	sepWidth := lipgloss.Width(separator)
+	parts := make([]string, 0, len(regions))
+	currentWidth := 0
+
+	for i, region := range regions {
+		part := valueStyle.Render(region)
+		partWidth := lipgloss.Width(part)
+
+		if len(parts) > 0 {
+			// remainingAfter = items AFTER current (not including current)
+			remainingAfter := len(regions) - i - 1
+			suffixWidth := 0
+			if remainingAfter > 0 {
+				// +1 because suffix shows total skipped count (current + remaining)
+				suffixWidth = lipgloss.Width("(+" + strconv.Itoa(remainingAfter+1) + ")")
+			}
+
+			neededWidth := currentWidth + sepWidth + partWidth
+			if remainingAfter > 0 {
+				neededWidth += sepWidth + suffixWidth
+			}
+
+			if neededWidth > maxWidth {
+				skipped := len(regions) - i
+				parts = append(parts, valueStyle.Render("(+"+strconv.Itoa(skipped)+")"))
+				break
+			}
+		}
+
+		parts = append(parts, part)
+		if len(parts) == 1 {
+			currentWidth = partWidth
+		} else {
+			currentWidth += sepWidth + partWidth
 		}
 	}
-	if len(accounts) == 0 {
-		return "-"
+
+	return strings.Join(parts, separator)
+}
+
+// formatSingleProfile formats a single profile with account ID
+// truncateWidth: 0 = no truncation, >0 = truncate name to this width
+func formatSingleProfile(name, accID string, valueStyle lipgloss.Style, truncateWidth int) string {
+	if truncateWidth > 0 {
+		name = TruncateString(name, truncateWidth)
 	}
-	if len(accounts) <= maxShow {
-		return strings.Join(accounts, ", ")
+
+	if accID == "-" || accID == "" {
+		return valueStyle.Render(name+" ") + ui.DangerStyle().Render("(-)")
 	}
-	return strings.Join(accounts[:maxShow], ", ") + " (+" + strconv.Itoa(len(accounts)-maxShow) + ")"
+	return valueStyle.Render(name + " (" + accID + ")")
 }
 
 // SetWidth sets the panel width
@@ -138,14 +274,80 @@ func (h *HeaderPanel) Height(rendered string) int {
 
 // RenderHome renders a simple header box for the home page (no service/resource info)
 func (h *HeaderPanel) RenderHome() string {
-	contextLine := h.renderContextLine("", "")
+	if config.Global().CompactHeader() {
+		return h.RenderCompact("", "")
+	}
+
+	lines := []string{
+		h.renderProfileAccountLine(),
+		h.renderRegionServiceLine("", ""),
+	}
+
+	content := strings.Join(lines, "\n")
 
 	panelStyle := h.styles.panel
 	if h.width > 4 {
 		panelStyle = panelStyle.Width(h.width - 2)
 	}
 
-	return panelStyle.Render(contextLine)
+	return panelStyle.Render(content)
+}
+
+func (h *HeaderPanel) RenderCompact(service, resourceType string) string {
+	cfg := config.Global()
+	s := h.styles
+
+	separator := s.dim.Render(" │ ")
+	sepWidth := lipgloss.Width(separator)
+
+	availableWidth := max(h.width-headerPanelPadding, minAvailableWidth)
+
+	var servicePart string
+	serviceWidth := 0
+	if service != "" {
+		displayName := registry.Global.GetDisplayName(service)
+		servicePart = s.accent.Render(displayName) +
+			s.dim.Render(" › ") +
+			s.accent.Render(resourceType)
+		serviceWidth = lipgloss.Width(servicePart)
+	}
+
+	numSeparators := 2
+	if servicePart != "" {
+		numSeparators = 3
+	}
+	remainingWidth := availableWidth - serviceWidth - (numSeparators-1)*sepWidth
+	profileMaxWidth := remainingWidth * profileWidthRatio / regionWidthRatio
+	regionMaxWidth := remainingWidth - profileMaxWidth
+
+	var profilePart string
+	if cfg.IsMultiProfile() {
+		selections := cfg.Selections()
+		profilePart = formatProfilesWithAccounts(selections, cfg.AccountIDs(), s.value, ui.DangerStyle(), profileMaxWidth)
+	} else {
+		name := cfg.Selection().DisplayName()
+		accID := cmp.Or(cfg.AccountID(), "-")
+		profilePart = formatSingleProfile(name, accID, s.value, profileTruncateWidth)
+	}
+
+	regionPart := formatRegions(cfg.Regions(), s.value, regionMaxWidth)
+
+	var parts []string
+	parts = append(parts, profilePart)
+	parts = append(parts, regionPart)
+	if servicePart != "" {
+		parts = append(parts, servicePart)
+	}
+
+	content := strings.Join(parts, separator)
+	content = TruncateString(content, availableWidth)
+
+	panelStyle := s.panel
+	if h.width > 4 {
+		panelStyle = panelStyle.Width(h.width - 2)
+	}
+
+	return panelStyle.Render(content)
 }
 
 // Render renders the header panel with fixed height
@@ -153,39 +355,41 @@ func (h *HeaderPanel) RenderHome() string {
 // resourceType: current resource type (e.g., "instances")
 // summaryFields: fields from renderer.RenderSummary()
 func (h *HeaderPanel) Render(service, resourceType string, summaryFields []render.SummaryField) string {
+	if config.Global().CompactHeader() {
+		return h.RenderCompact(service, resourceType)
+	}
+
 	s := h.styles
 
-	// Build content lines (fixed to headerFixedLines)
 	lines := make([]string, headerFixedLines)
-	lines[0] = h.renderContextLine(service, resourceType)
 
-	// Line 2: Separator
-	sepWidth := h.width - 6
-	if sepWidth < 20 {
-		sepWidth = 60
-	}
-	lines[1] = s.separator.Render(strings.Repeat("─", sepWidth))
+	lines[0] = h.renderProfileAccountLine()
+	lines[1] = h.renderRegionServiceLine(service, resourceType)
+
+	sepWidth := max(h.width-headerPanelPadding, minAvailableWidth)
+	lines[2] = s.separator.Render(strings.Repeat("─", sepWidth))
 
 	if len(summaryFields) == 0 {
-		// No resource selected - show placeholder on line 3, empty line 4
-		lines[2] = s.dim.Render("No resource selected")
-		lines[3] = ""
+		lines[3] = s.dim.Render("No resource selected")
+		lines[4] = ""
 	} else {
-		// Render fields in rows (3 fields per row), max 3 rows
-		fieldsPerRow := 3
-		maxRows := 3
-		var currentRow []string
-		rowIndex := 0
+		availableWidth := max(h.width-headerPanelPadding, minAvailableWidth)
 
-		for i, field := range summaryFields {
+		separator := s.dim.Render("  │  ")
+		sepWidth := lipgloss.Width(separator)
+
+		maxRows := 2
+		rowIndex := 0
+		currentLineWidth := 0
+		var currentRow []string
+
+		for _, field := range summaryFields {
 			if rowIndex >= maxRows {
-				break // Only show first 3 rows of fields
+				break
 			}
 
-			// Truncate long values to prevent line wrapping
 			truncatedValue := TruncateString(field.Value, maxFieldValueWidth)
 
-			// Format field with appropriate styling
 			var styledValue string
 			if field.Style.GetForeground() != (lipgloss.NoColor{}) {
 				styledValue = field.Style.Render(truncatedValue)
@@ -193,26 +397,39 @@ func (h *HeaderPanel) Render(service, resourceType string, summaryFields []rende
 				styledValue = s.value.Render(truncatedValue)
 			}
 			part := s.label.Render(field.Label+": ") + styledValue
-			currentRow = append(currentRow, part)
+			partWidth := lipgloss.Width(part)
 
-			// Check if we should start a new row
-			if len(currentRow) >= fieldsPerRow || i == len(summaryFields)-1 {
-				lines[2+rowIndex] = strings.Join(currentRow, s.dim.Render("  │  "))
-				currentRow = nil
-				rowIndex++
+			if len(currentRow) > 0 {
+				if currentLineWidth+sepWidth+partWidth > availableWidth {
+					lines[3+rowIndex] = strings.Join(currentRow, separator)
+					currentRow = []string{part}
+					currentLineWidth = partWidth
+					rowIndex++
+					if rowIndex >= maxRows {
+						break
+					}
+				} else {
+					currentRow = append(currentRow, part)
+					currentLineWidth += sepWidth + partWidth
+				}
+			} else {
+				currentRow = []string{part}
+				currentLineWidth = partWidth
 			}
 		}
 
-		// Fill remaining lines with empty strings
-		for i := 2 + rowIndex; i < headerFixedLines; i++ {
+		if len(currentRow) > 0 && rowIndex < maxRows {
+			lines[3+rowIndex] = strings.Join(currentRow, separator)
+			rowIndex++
+		}
+
+		for i := 3 + rowIndex; i < headerFixedLines; i++ {
 			lines[i] = ""
 		}
 	}
 
-	// Combine lines
 	content := strings.Join(lines, "\n")
 
-	// Apply panel style with width
 	panelStyle := s.panel
 	if h.width > 4 {
 		panelStyle = panelStyle.Width(h.width - 2)

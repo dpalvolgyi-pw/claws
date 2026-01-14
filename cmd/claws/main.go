@@ -53,6 +53,14 @@ func main() {
 	}
 	cfg.SetReadOnly(opts.readOnly)
 
+	var compactHeader bool
+	if opts.compactHeader != nil {
+		compactHeader = *opts.compactHeader
+	} else {
+		compactHeader = fileCfg.GetCompactHeader()
+	}
+	cfg.SetCompactHeader(compactHeader)
+
 	for _, p := range opts.profiles {
 		if !config.IsValidProfileName(p) {
 			fmt.Fprintf(os.Stderr, "Error: invalid profile name: %s\n", p)
@@ -116,16 +124,17 @@ func main() {
 }
 
 type cliOptions struct {
-	profiles   []string
-	regions    []string
-	readOnly   bool
-	envCreds   bool
-	autosave   *bool
-	logFile    string
-	configFile string
-	service    string
-	resourceID string
-	theme      string
+	profiles      []string
+	regions       []string
+	readOnly      bool
+	envCreds      bool
+	autosave      *bool
+	logFile       string
+	configFile    string
+	service       string
+	resourceID    string
+	theme         string
+	compactHeader *bool
 }
 
 // parseFlags parses command line flags and returns options
@@ -194,6 +203,12 @@ func parseFlagsFromArgs(args []string) cliOptions {
 				i++
 				opts.theme = args[i]
 			}
+		case "--compact":
+			t := true
+			opts.compactHeader = &t
+		case "--no-compact":
+			f := false
+			opts.compactHeader = &f
 		case "-h", "--help":
 			showHelp = true
 		case "-v", "--version":
@@ -245,6 +260,10 @@ func printUsage() {
 	fmt.Println("        Enable debug logging to specified file")
 	fmt.Println("  -t, --theme <name>")
 	fmt.Println("        Color theme: dark, light, nord, dracula, gruvbox, catppuccin")
+	fmt.Println("  --compact")
+	fmt.Println("        Start with compact header mode (toggle with Ctrl+E)")
+	fmt.Println("  --no-compact")
+	fmt.Println("        Disable compact header (overrides config file)")
 	fmt.Println("  -v, --version")
 	fmt.Println("        Show version")
 	fmt.Println("  -h, --help")

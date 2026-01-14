@@ -227,6 +227,15 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return a, nil
 
+	case view.CompactHeaderChangedMsg:
+		if a.currentView != nil {
+			a.currentView.Update(msg)
+		}
+		for _, v := range a.viewStack {
+			v.Update(msg)
+		}
+		return a, nil
+
 	case view.ThemeChangeMsg:
 		theme := ui.GetPreset(msg.Name)
 		if theme == nil {
@@ -340,6 +349,16 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				chatOverlay.Init(),
 				a.modal.SetSize(a.width, a.height),
 			)
+
+		case key.Matches(msg, a.keys.CompactHeader):
+			compact := !config.Global().CompactHeader()
+			config.Global().SetCompactHeader(compact)
+			if config.File().PersistenceEnabled() {
+				if err := config.File().SaveCompactHeader(compact); err != nil {
+					log.Warn("failed to persist compact header", "error", err)
+				}
+			}
+			return a, func() tea.Msg { return view.CompactHeaderChangedMsg{} }
 		}
 
 	case view.ShowModalMsg:
@@ -504,7 +523,7 @@ func (a *App) View() tea.View {
 
 	var statusContent string
 	if a.commandMode {
-		statusContent = a.commandInput.View() + " • Esc:cancel Enter:run Tab:complete"
+		statusContent = a.commandInput.View() + ui.DimStyle().Render(" • Esc:cancel Enter:run Tab:complete")
 	} else {
 		if a.err != nil {
 			statusContent = ui.DangerStyle().Render("Error: " + a.err.Error())
@@ -774,17 +793,18 @@ func (a *App) refreshCurrentView() (tea.Model, tea.Cmd) {
 }
 
 type keyMap struct {
-	Up      key.Binding
-	Down    key.Binding
-	Enter   key.Binding
-	Back    key.Binding
-	Filter  key.Binding
-	Command key.Binding
-	Region  key.Binding
-	Profile key.Binding
-	AI      key.Binding
-	Help    key.Binding
-	Quit    key.Binding
+	Up            key.Binding
+	Down          key.Binding
+	Enter         key.Binding
+	Back          key.Binding
+	Filter        key.Binding
+	Command       key.Binding
+	Region        key.Binding
+	Profile       key.Binding
+	AI            key.Binding
+	CompactHeader key.Binding
+	Help          key.Binding
+	Quit          key.Binding
 }
 
 func defaultKeyMap() keyMap {
@@ -824,6 +844,10 @@ func defaultKeyMap() keyMap {
 		AI: key.NewBinding(
 			key.WithKeys("A"),
 			key.WithHelp("A", "ai chat"),
+		),
+		CompactHeader: key.NewBinding(
+			key.WithKeys("ctrl+e"),
+			key.WithHelp("ctrl+e", "compact header"),
 		),
 		Help: key.NewBinding(
 			key.WithKeys("?"),

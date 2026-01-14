@@ -96,7 +96,6 @@ func TestSettingsView_BuildContent(t *testing.T) {
 	expectedSections := []string{
 		"Config File",
 		"Runtime",
-		"Startup",
 		"Theme",
 		"Timeouts",
 		"Concurrency",
@@ -109,6 +108,19 @@ func TestSettingsView_BuildContent(t *testing.T) {
 	for _, section := range expectedSections {
 		if !strings.Contains(content, section) {
 			t.Errorf("buildContent() should contain section %q", section)
+		}
+	}
+
+	expectedFields := []string{
+		"Compact",
+		"Read-only",
+		"Regions",
+		"Profiles",
+	}
+
+	for _, field := range expectedFields {
+		if !strings.Contains(content, field) {
+			t.Errorf("buildContent() should contain field %q", field)
 		}
 	}
 }
@@ -153,19 +165,5 @@ func TestSettingsView_FormatProfiles_Empty(t *testing.T) {
 	result = sv.formatProfiles([]config.ProfileSelection{})
 	if result != noneValue {
 		t.Errorf("formatProfiles([]) should return %q, got %q", noneValue, result)
-	}
-}
-
-func TestSettingsView_GetProfileIDs(t *testing.T) {
-	sv := NewSettingsView(context.Background())
-
-	ids := sv.getProfileIDs(nil)
-	if len(ids) != 0 {
-		t.Errorf("getProfileIDs(nil) should return empty slice, got %d items", len(ids))
-	}
-
-	ids = sv.getProfileIDs([]config.ProfileSelection{})
-	if len(ids) != 0 {
-		t.Errorf("getProfileIDs([]) should return empty slice, got %d items", len(ids))
 	}
 }

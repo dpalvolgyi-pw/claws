@@ -17,6 +17,8 @@ import (
 	"github.com/clawscli/claws/internal/ui"
 )
 
+const minViewportHeight = 5
+
 // DetailView displays detailed information about a single resource
 // detailViewStyles holds cached lipgloss styles for performance
 type detailViewStyles struct {
@@ -47,6 +49,8 @@ type DetailView struct {
 	refreshErr  error
 	spinner     spinner.Model
 	styles      detailViewStyles
+	width       int
+	height      int
 }
 
 // NewDetailView creates a new DetailView
@@ -128,6 +132,9 @@ func (d *DetailView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			d.vp.Model.SetContent(d.renderContent())
 		}
 		return d, nil
+	case CompactHeaderChangedMsg:
+		d.recalcViewport()
+		return d, nil
 
 	case tea.KeyPressMsg:
 		// Let app handle back navigation (esc/backspace/q handled by app.go)
@@ -205,8 +212,16 @@ func (d *DetailView) View() tea.View {
 
 // SetSize implements View
 func (d *DetailView) SetSize(width, height int) tea.Cmd {
+	d.width = width
+	d.height = height
 	d.headerPanel.SetWidth(width)
 
+	d.recalcViewport()
+
+	return nil
+}
+
+func (d *DetailView) recalcViewport() {
 	// Calculate header height dynamically
 	var summaryFields []render.SummaryField
 	if d.renderer != nil {
@@ -215,14 +230,16 @@ func (d *DetailView) SetSize(width, height int) tea.Cmd {
 	headerStr := d.headerPanel.Render(d.service, d.resType, summaryFields)
 	headerHeight := d.headerPanel.Height(headerStr)
 
-	viewportHeight := max(height-headerHeight+1, 5)
+	// +1 compensates for border overlap
+	viewportHeight := max(d.height-headerHeight+1, minViewportHeight)
 
-	d.vp.SetSize(width, viewportHeight)
+	d.vp.SetSize(d.width, viewportHeight)
 
+	if !d.vp.Ready {
+		return
+	}
 	content := d.renderContent()
 	d.vp.Model.SetContent(content)
-
-	return nil
 }
 
 func (d *DetailView) StatusLine() string {
