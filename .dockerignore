@@ -1,0 +1,44 @@
+# Version control
+.git
+.gitignore
+
+# Build artifacts
+dist/
+bin/
+claws
+claws-codegen
+*.exe
+*.test
+*.out
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# CI / config
+.github/
+CLAUDE.md
+AGENTS.md
+.claude/
+
+# Local env
+.env
+.env.local
+.gtrconfig
+
+# Docs & scripts
+docs/
+scripts/localstack-*
+node_modules/
+.lsmcp/
+
+# Docker
+Dockerfile
+.dockerignore
