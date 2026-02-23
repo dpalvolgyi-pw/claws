@@ -64,6 +64,14 @@ Download from [GitHub Releases](https://github.com/clawscli/claws/releases/lates
 go install github.com/clawscli/claws/cmd/claws@latest
 ```
 
+### Docker
+
+```bash
+docker run -it --rm \
+  -v ~/.aws:/home/claws/.aws:ro \
+  ghcr.io/clawscli/claws
+```
+
 ## Quick Start
 
 ```bash

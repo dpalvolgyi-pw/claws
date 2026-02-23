@@ -64,6 +64,14 @@ curl -fsSL https://raw.githubusercontent.com/clawscli/claws/main/install.sh | sh
 go install github.com/clawscli/claws/cmd/claws@latest
 ```
 
+### Docker
+
+```bash
+docker run -it --rm \
+  -v ~/.aws:/home/claws/.aws:ro \
+  ghcr.io/clawscli/claws
+```
+
 ## 빠른 시작
 
 ```bash
