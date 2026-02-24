@@ -3,6 +3,9 @@ package services
 import (
 	"fmt"
 	"strings"
+	"time"
+
+	"github.com/aws/aws-sdk-go-v2/service/ecs/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
@@ -27,6 +30,7 @@ func NewServiceRenderer() render.Renderer {
 			Cols: []render.Column{
 				{Name: "NAME", Width: 35, Getter: func(r dao.Resource) string { return r.GetName() }},
 				{Name: "STATUS", Width: 10, Getter: getStatus},
+				{Name: "LAST DEPLOYMENT", Width: 26, Getter: getLastDeployment},
 				{Name: "DESIRED", Width: 8, Getter: getDesired},
 				{Name: "RUNNING", Width: 8, Getter: getRunning},
 				{Name: "PENDING", Width: 8, Getter: getPending},
@@ -52,6 +56,60 @@ func getStatus(r dao.Resource) string {
 		}
 	}
 	return ""
+}
+
+func getLastDeployment(r dao.Resource) string {
+	if svc, ok := r.(*ServiceResource); ok {
+		latest, last := getLatestDeployment(svc)
+		if last != nil {
+			state := formatDeploymentState(latest)
+			if state == "" {
+				state = "unknown"
+			}
+			return state + " - " + render.FormatAge(*last)
+		}
+	}
+
+	return "-"
+}
+
+func getLatestDeployment(svc *ServiceResource) (*types.Deployment, *time.Time) {
+	var latest *types.Deployment
+	var latestTime *time.Time
+
+	for i := range svc.Deployments() {
+		dep := &svc.Deployments()[i]
+
+		if dep.UpdatedAt != nil && (latestTime == nil || dep.UpdatedAt.After(*latestTime)) {
+			latest = dep
+			latestTime = dep.UpdatedAt
+			continue
+		}
+		if dep.CreatedAt != nil && (latestTime == nil || dep.CreatedAt.After(*latestTime)) {
+			latest = dep
+			latestTime = dep.CreatedAt
+		}
+	}
+
+	return latest, latestTime
+}
+
+func formatDeploymentState(dep *types.Deployment) string {
+	if dep == nil {
+		return ""
+	}
+
+	if dep.RolloutState != "" {
+		state := strings.ToLower(string(dep.RolloutState))
+		return strings.ReplaceAll(state, "_", " ")
+	}
+
+	status := appaws.Str(dep.Status)
+	if status == "" {
+		return ""
+	}
+
+	return strings.ToLower(status)
 }
 
 func getDesired(r dao.Resource) string {
