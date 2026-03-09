@@ -2,7 +2,6 @@ package distributions
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/clawscli/claws/internal/dao"
@@ -190,17 +189,7 @@ func (r *DistributionRenderer) RenderDetail(resource dao.Resource) string {
 	}
 
 	// Tags (only available after d:describe / Enter)
-	if tags := dist.GetTags(); len(tags) > 0 {
-		d.Section("Tags")
-		keys := make([]string, 0, len(tags))
-		for k := range tags {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			d.Field(k, tags[k])
-		}
-	}
+	d.Tags(dist.GetTags())
 
 	// In-progress invalidations
 	if batches := dist.InProgressInvalidationBatches(); batches > 0 {
